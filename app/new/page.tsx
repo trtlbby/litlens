@@ -138,10 +138,13 @@ export default function NewProjectPage() {
             const failedCount = files.length - succeededFiles.length;
 
             if (succeededFiles.length === 0) {
-                // ALL uploads failed — show error, don't navigate
+                // ALL uploads failed — show the actual error message from the first failed file
+                const firstFailed = useUploadStore.getState().files.find(f => f.status === "error");
+                const actualError = firstFailed?.error || "Unknown error";
+                
                 setProcessing(false);
                 setError(
-                    `All ${files.length} file(s) failed to upload. Check that your Gemini API key is valid and the Python service is running.`
+                    `All ${files.length} file(s) failed to upload. Reason: ${actualError}`
                 );
                 return;
             }

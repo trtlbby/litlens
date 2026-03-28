@@ -45,12 +45,15 @@ export async function POST(
             );
         }
 
-        if (!file.name.toLowerCase().endsWith(".pdf")) {
+        if (
+            !file.name.toLowerCase().endsWith(".pdf") &&
+            file.type !== "application/pdf"
+        ) {
             return NextResponse.json(
                 {
                     error: {
                         code: "INVALID_FILE_TYPE",
-                        message: "Only PDF files are accepted",
+                        message: "Only PDF files are accepted. Mobile devices may need to ensure the file has a .pdf extension.",
                     },
                 },
                 { status: 400 }
