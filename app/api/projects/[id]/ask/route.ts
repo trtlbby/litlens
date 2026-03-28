@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { embedText, generateText } from "@/lib/openai";
 
+export const maxDuration = 60;
+
 /**
  * POST /api/projects/:id/ask — RAG pipeline
  *

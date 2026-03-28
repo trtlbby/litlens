@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateText } from "@/lib/openai";
 
+export const maxDuration = 60;
+
 /**
  * POST /api/projects/:id/gaps — Run gap analysis
  *

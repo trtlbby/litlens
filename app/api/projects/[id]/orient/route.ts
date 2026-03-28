@@ -6,6 +6,8 @@ import {
   cosineSimilarity,
 } from "@/lib/openai";
 
+export const maxDuration = 60;
+
 const PYTHON_SERVICE_URL =
   process.env.PYTHON_SERVICE_URL || "http://localhost:8000";
 

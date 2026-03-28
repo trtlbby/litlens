@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { embedTexts } from "@/lib/openai";
 import { createChunks } from "@/lib/chunker";
 
+// Allow function to run up to 60 seconds (Vercel Hobby max)
+export const maxDuration = 60;
+
 const PYTHON_SERVICE_URL =
     process.env.PYTHON_SERVICE_URL || "http://localhost:8000";
 
