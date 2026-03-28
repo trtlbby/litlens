@@ -1,0 +1,25 @@
+{
+  "name": "LitLens — Understand Your Literature",
+  "short_name": "LitLens",
+  "description": "Upload your research PDFs and get thematic clusters, alignment assessment, cited Q&A, and gap analysis in seconds.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F5F0",
+  "theme_color": "#1F5C45",
+  "orientation": "any",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

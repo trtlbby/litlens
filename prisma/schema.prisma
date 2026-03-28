@@ -1,0 +1,146 @@
+// Prisma schema for LitLens — all tables per Section 5 of the spec
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [vector]
+}
+
+/// A research project (one per researcher session in V1)
+model Project {
+  id               String     @id @default(uuid()) @db.Uuid
+  title            String?
+  researchQuestion String?    @map("research_question")
+  scopeContext     String?    @map("scope_context")
+  methodology      String?
+  knownCoverage    String?    @map("known_coverage")
+  librarySummary   String?    @map("library_summary")
+  alignmentScore   Int?       @map("alignment_score")
+  strongCoverage   String?    @map("strong_coverage")
+  notableGaps      String?    @map("notable_gaps")
+  createdAt        DateTime   @default(now()) @map("created_at")
+
+  documents Document[]
+  chunks    Chunk[]
+  clusters  Cluster[]
+  gaps      Gap[]
+  qaSessions QaSession[]
+
+  @@map("projects")
+}
+
+/// An uploaded PDF and its metadata
+model Document {
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @map("project_id") @db.Uuid
+  filename  String
+  title     String?
+  authors   String?
+  year      Int?
+  bibtex    String?
+  fullText  String?  @map("full_text")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  project  Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  chunks   Chunk[]
+  qaSources QaSource[]
+
+  @@map("documents")
+}
+
+/// A sentence-level chunk of a document (unit of embedding)
+model Chunk {
+  id          String   @id @default(uuid()) @db.Uuid
+  documentId  String   @map("document_id") @db.Uuid
+  projectId   String   @map("project_id") @db.Uuid
+  text        String
+  chunkIndex  Int      @map("chunk_index")
+  embedding   Unsupported("vector(3072)")?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  document      Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  chunkClusters ChunkCluster[]
+  qaSources     QaSource[]
+
+  @@map("chunks")
+}
+
+/// A discovered thematic cluster
+model Cluster {
+  id           String   @id @default(uuid()) @db.Uuid
+  projectId    String   @map("project_id") @db.Uuid
+  label        String?
+  summary      String?
+  centroid     Unsupported("vector(3072)")?
+  clusterIndex Int      @map("cluster_index")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  chunkClusters ChunkCluster[]
+
+  @@map("clusters")
+}
+
+/// Mapping of chunks to clusters
+model ChunkCluster {
+  chunkId   String @map("chunk_id") @db.Uuid
+  clusterId String @map("cluster_id") @db.Uuid
+  distance  Float
+
+  chunk   Chunk   @relation(fields: [chunkId], references: [id], onDelete: Cascade)
+  cluster Cluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+
+  @@id([chunkId, clusterId])
+  @@map("chunk_clusters")
+}
+
+/// A gap detected against the research question
+model Gap {
+  id             String   @id @default(uuid()) @db.Uuid
+  projectId      String   @map("project_id") @db.Uuid
+  topic          String
+  explanation    String
+  suggestedTerms String?  @map("suggested_terms")
+  dismissed      Boolean  @default(false)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("gaps")
+}
+
+/// A Q&A exchange
+model QaSession {
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @map("project_id") @db.Uuid
+  question  String
+  answer    String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  project  Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sources  QaSource[]
+
+  @@map("qa_sessions")
+}
+
+/// Source passages that supported a Q&A answer
+model QaSource {
+  id             String @id @default(uuid()) @db.Uuid
+  qaSessionId    String @map("qa_session_id") @db.Uuid
+  chunkId        String @map("chunk_id") @db.Uuid
+  documentId     String @map("document_id") @db.Uuid
+  passage        String
+  relevanceScore Float  @map("relevance_score")
+
+  qaSession QaSession @relation(fields: [qaSessionId], references: [id], onDelete: Cascade)
+  chunk     Chunk     @relation(fields: [chunkId], references: [id], onDelete: Cascade)
+  document  Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("qa_sources")
+}
