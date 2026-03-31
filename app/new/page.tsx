@@ -189,22 +189,18 @@ export default function NewProjectPage() {
         }
     };
 
-    // Show processing screen
-    if (isProcessing) {
-        return (
-            <ProcessingScreen
-                currentStep={processingStep}
-                statusMessage={processingMessage}
-            />
-        );
-    }
+    // Remove early return for ProcessingScreen to prevent DOM unmounting
+    // Instead, it will be rendered conditionally below with the rest of the layout hidden.
 
     return (
         <div className="min-h-screen flex flex-col">
             <Header />
-            <Stepper currentStep={step} steps={["Research Question", "Upload PDFs"]} />
+            
+            <div className={isProcessing ? "hidden" : "block"}>
+                <Stepper currentStep={step} steps={["Research Question", "Upload PDFs"]} />
+            </div>
 
-            <main className="flex-1 flex flex-col items-center px-4 pb-12">
+            <main className={`flex-1 flex flex-col items-center px-4 pb-12 ${isProcessing ? "hidden" : "flex"}`}>
                 <div className="w-full max-w-2xl">
                     {/* ====== STEP 1: Research Question ====== */}
                     {step === 1 && (
@@ -322,6 +318,15 @@ export default function NewProjectPage() {
                     )}
                 </div>
             </main>
+
+            {isProcessing && (
+                <main className="flex-1 flex flex-col mt-4">
+                    <ProcessingScreen
+                        currentStep={processingStep}
+                        statusMessage={processingMessage}
+                    />
+                </main>
+            )}
         </div>
     );
 }
