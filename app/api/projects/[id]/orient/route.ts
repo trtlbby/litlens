@@ -6,7 +6,7 @@ import {
   cosineSimilarity,
 } from "@/lib/openai";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const PYTHON_SERVICE_URL =
   process.env.PYTHON_SERVICE_URL || "http://localhost:8000";
@@ -251,6 +251,7 @@ SUMMARY: [your summary here]`;
 
         // Scale 0-1 → 0-100
         alignmentScore = Math.round(weightedScore * 100);
+        if (isNaN(alignmentScore)) alignmentScore = 0;
 
         // Strong coverage: clusters with similarity > 0.6
         strongCoverage = similarities

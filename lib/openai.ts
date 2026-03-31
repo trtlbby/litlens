@@ -23,8 +23,8 @@ function sleep(ms: number): Promise<void> {
 // ─── LLM Fallback Chain ───
 // Ordered by preference. If one is rate-limited, try the next.
 const LLM_FALLBACK_CHAIN = [
-  "gemini-2.5-flash",
   "gemini-2.5-flash-lite",
+  "gemini-2.5-flash",
   "gemma-3-12b-it",
 ];
 
@@ -116,8 +116,8 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
 
 /**
  * Generate text using Gemini LLM with fallback chain.
- * If the primary model (gemini-2.5-flash) is rate-limited or returns empty,
- * falls back to flash-lite, then gemma-3-12b-it.
+ * If the primary model (gemini-2.5-flash-lite) is rate-limited or returns empty,
+ * falls back to flash, then gemma-3-12b-it.
  */
 export async function generateText(prompt: string): Promise<string> {
   await sleep(RATE_LIMIT_DELAY_MS); // rate limit pre-delay
@@ -138,14 +138,10 @@ export async function generateText(prompt: string): Promise<string> {
 
       return text;
     } catch (error: unknown) {
-      if (isRateLimited(error) || isEmptyOutputError(error)) {
-        console.warn(
-          `[LitLens] ${modelName} ${isRateLimited(error) ? "rate limited" : "empty output"} — trying next model`
-        );
-        continue; // try next model in chain
-      }
-      // Non-rate-limit error — don't fallback, throw immediately
-      throw error;
+      console.warn(
+        `[LitLens] Model ${modelName} failed:`, error
+      );
+      continue; // try next model in chain
     }
   }
 

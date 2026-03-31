@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
 import "./globals.css";
-
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 const playfair = Playfair_Display({
   variable: "--font-heading",
   subsets: ["latin"],
@@ -58,6 +59,8 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         {children}
+        <Analytics />
+        <SpeedInsights />
         <script
           dangerouslySetInnerHTML={{
             __html: `
