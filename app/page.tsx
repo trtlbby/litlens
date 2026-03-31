@@ -6,19 +6,30 @@ import { Compass, MessageSquare, Search } from "lucide-react";
 import { LoginModal } from "@/components/auth/LoginModal";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { useAuth } from "@/components/auth/AuthContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { SplashScreen } from "@/components/ui/splash-screen";
 
 export default function LandingPage() {
   const router = useRouter();
   const [showLogin, setShowLogin] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
   const { isLoggedIn, projects } = useAuth();
   
-  // Since we don't have a distinct "Button" component with variants, 
-  // I will create inline styles for the button component or use plain HTML buttons 
-  // with tailwind styles that match the original code.
+  useEffect(() => {
+    // Only show splash screen once per browser session
+    if (sessionStorage.getItem("litlens_splashed")) {
+      setShowSplash(false);
+    }
+  }, []);
+
+  const handleSplashComplete = () => {
+    sessionStorage.setItem("litlens_splashed", "true");
+    setShowSplash(false);
+  };
 
   return (
     <div className="min-h-screen bg-[#F7F5F0] flex flex-col">
+      {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
       {/* Header */}
       <header className="w-full px-10 py-5 flex items-center justify-between max-w-[1280px] mx-auto md:px-10 px-5">
         <LitLensLogo />

@@ -54,7 +54,10 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   // Fetch projects when user logs in
   const refreshProjects = useCallback(async () => {
     try {
-      const res = await fetch("/api/projects");
+      const res = await fetch("/api/projects", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" }
+      });
       const data = await res.json();
       if (Array.isArray(data)) {
         setProjects(data);

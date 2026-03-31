@@ -333,12 +333,12 @@ function CitationBlock({ source }: { source: Source }) {
     <div className="bg-[#F0EDE6] rounded-md p-4">
       <p
         className="text-[#1C1C1E] italic mb-3"
-        style={{ fontSize: "13px", lineHeight: 1.6 }}
+        style={{ fontSize: "13px", lineHeight: 1.6, fontFamily: "'DM Mono', monospace" }}
       >
         &ldquo;{displayText}&rdquo;
       </p>
       <div className="flex items-center gap-3 flex-wrap">
-        <span className="text-[#6B6B78]" style={{ fontSize: "12px" }}>
+        <span className="text-[#6B6B78]" style={{ fontSize: "12px", fontFamily: "'DM Mono', monospace" }}>
           {source.document_title || source.document_filename}
         </span>
         <span

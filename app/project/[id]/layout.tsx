@@ -16,7 +16,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const params = useParams();
   const projectId = typeof params?.id === "string" ? params.id : "";
 
-  const { isLoggedIn, activeProject, canCreateProject } = useAuth();
+  const { isLoggedIn, projects, activeProject, canCreateProject } = useAuth();
+  
+  const currentProject = projects.find(p => p.id === projectId) || activeProject;
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
 
@@ -58,7 +60,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
         <p className="hidden md:block text-[#1C1C1E] truncate max-w-[400px]" style={{ fontSize: "14px", fontWeight: 500 }}>
-          {activeProject?.name ?? "Getting your project..."}
+          {currentProject?.name ?? "Getting your project..."}
         </p>
         <div className="flex items-center gap-3">
           {isLoggedIn ? (

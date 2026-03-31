@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { generateText } from "@/lib/openai";
 
 /**
  * POST /api/projects — Create a new project
@@ -14,10 +15,23 @@ export async function POST(request: NextRequest) {
 
         const body = await request.json().catch(() => ({}));
 
+        let calculatedTitle = body.title || "Untitled Project";
+        if ((calculatedTitle === "Untitled Project" || calculatedTitle === "Research Project") && body.research_question) {
+            try {
+                const titlePrompt = `Generate a concise 3-to-6 word title for a research project that investigates the following question: "${body.research_question}". Do not include punctuation like periods or quotation marks. Return ONLY the title.`;
+                const llmTitle = await generateText(titlePrompt);
+                if (llmTitle && llmTitle.trim().length > 0) {
+                    calculatedTitle = llmTitle.replace(/["']/g, "").trim();
+                }
+            } catch (err) {
+                console.error("Failed to generate title", err);
+            }
+        }
+
         const project = await prisma.project.create({
             data: {
                 userId: session.user.id,
-                title: body.title || "Untitled Project",
+                title: calculatedTitle,
                 researchQuestion: body.research_question || null,
                 scopeContext: body.scope_context || null,
                 methodology: body.methodology || null,
