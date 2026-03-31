@@ -8,12 +8,14 @@ import Dropzone from "@/components/upload/dropzone";
 import FileList from "@/components/upload/file-list";
 import ProcessingScreen from "@/components/upload/processing-screen";
 import { useUploadStore, UploadFile } from "@/lib/stores/upload-store";
+import { useAuth } from "@/components/auth/AuthContext";
 
 const MAX_CHARS = 500;
 const MAX_FILES = 20;
 
 export default function NewProjectPage() {
     const router = useRouter();
+    const { refreshProjects, setActiveProjectId } = useAuth();
     const {
         researchQuestion,
         setResearchQuestion,
@@ -176,6 +178,10 @@ export default function NewProjectPage() {
                 // Orientation failed — still navigate, user can re-run
                 setProcessing(true, 2, "Preparing your dashboard...");
             }
+
+            // Refresh global auth context to fetch new project
+            await refreshProjects();
+            setActiveProjectId(project.id);
 
             // Navigate to project dashboard
             setTimeout(() => {

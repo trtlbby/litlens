@@ -1,149 +1,131 @@
 "use client";
 
-import Link from "next/link";
-import Header from "@/components/ui/header";
+import { useRouter } from "next/navigation";
+import { LitLensLogo } from "@/components/ui/LitLensLogo";
+import { Compass, MessageSquare, Search } from "lucide-react";
+import { LoginModal } from "@/components/auth/LoginModal";
+import { UserMenu } from "@/components/auth/UserMenu";
+import { useAuth } from "@/components/auth/AuthContext";
 import { useState } from "react";
-import { SplashScreen } from "@/components/ui/splash-screen";
 
 export default function LandingPage() {
-  const [showSplash, setShowSplash] = useState(true);
+  const router = useRouter();
+  const [showLogin, setShowLogin] = useState(false);
+  const { isLoggedIn, projects } = useAuth();
+  
+  // Since we don't have a distinct "Button" component with variants, 
+  // I will create inline styles for the button component or use plain HTML buttons 
+  // with tailwind styles that match the original code.
 
   return (
-    <>
-      {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
-      <div className="min-h-screen flex flex-col">
-        <Header />
-
-        {/* Hero Section */}
-        <main className="flex-1 flex flex-col items-center justify-center px-4 -mt-8">
-          {/* Decorative elements */}
-          <div className="flex items-center gap-6 mb-10">
-          <div className="w-12 h-[2px] bg-forest/30" />
-          <div className="flex gap-3">
-            <div
-              className="w-8 h-10 rounded-sm bg-cream-dark border border-black/8 rotate-[-8deg] shadow-sm"
-              style={{ transform: "rotate(-8deg)" }}
-            />
-            <div
-              className="w-8 h-10 rounded-sm bg-cream-dark border border-black/8 shadow-sm"
-            />
-            <div
-              className="w-8 h-10 rounded-sm bg-cream-dark border border-black/8 rotate-[8deg] shadow-sm"
-              style={{ transform: "rotate(8deg)" }}
-            />
-          </div>
-          <div className="w-12 h-[2px] bg-forest/30" />
+    <div className="min-h-screen bg-[#F7F5F0] flex flex-col">
+      {/* Header */}
+      <header className="w-full px-10 py-5 flex items-center justify-between max-w-[1280px] mx-auto md:px-10 px-5">
+        <LitLensLogo />
+        <div className="flex items-center gap-6">
+          {isLoggedIn ? (
+            <UserMenu />
+          ) : (
+            <button
+              onClick={() => setShowLogin(true)}
+              className="text-black hover:opacity-60 transition-opacity bg-transparent border-none outline-none cursor-pointer"
+              style={{ fontSize: "15px", fontFamily: "var(--font-body)" }}
+            >
+              Log in
+            </button>
+          )}
+          
+          <button 
+             onClick={() => {
+                if (isLoggedIn) {
+                   if (projects.length > 0) {
+                      router.push(`/project/${projects[0].id}`);
+                   } else {
+                      router.push('/new');
+                   }
+                } else {
+                   router.push('/new');
+                }
+             }}
+             className="px-6 py-2.5 rounded-lg text-white transition-opacity hover:opacity-90 font-medium cursor-pointer"
+             style={{ backgroundColor: "#1F5C45", fontSize: "15px" }}
+          >
+            {isLoggedIn ? "My Projects" : "Get Started"}
+          </button>
         </div>
+      </header>
 
-        {/* Headline */}
-        <h1
-          className="text-5xl md:text-6xl font-bold text-charcoal text-center leading-[1.15] mb-5 max-w-2xl"
-          style={{ fontFamily: "var(--font-heading)" }}
-        >
-          Understand your literature.
-          <br />
-          Not just collect it.
-        </h1>
+      <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} />
 
-        {/* Subtitle */}
-        <p className="text-lg text-slate text-center max-w-xl mb-10 leading-relaxed">
-          Upload your research question and PDFs — get thematic clusters,
-          alignment assessment, cited Q&A, and gap analysis in seconds.
-        </p>
+      {/* Hero */}
+      <main className="flex-1 flex flex-col items-center justify-center px-5 md:px-10">
+        <div className="max-w-[800px] text-center mt-[-40px]">
+          {/* Abstract geometric shapes */}
+          <div className="flex justify-center gap-4 mb-10">
+            <div className="w-16 h-1 bg-[#4A7C59] rounded-full opacity-40" />
+            <div className="w-8 h-8 border-2 border-[#3D6B9A] rounded opacity-30 rotate-12" />
+            <div className="w-12 h-1 bg-[#8C5E7A] rounded-full opacity-40 mt-4" />
+            <div className="w-6 h-6 border-2 border-[#B5614A] opacity-30 -rotate-6" />
+            <div className="w-14 h-1 bg-[#8A7D3E] rounded-full opacity-40 mt-2" />
+          </div>
 
-        {/* CTA Button */}
-        <Link href="/new">
-          <button className="btn-primary text-base px-10 py-4 rounded-full shadow-lg hover:shadow-xl">
+          <h1 className="mb-6 font-semibold" style={{ fontSize: "clamp(32px, 5vw, 48px)", fontFamily: "var(--font-heading)", color: "#1C1C1E" }}>
+            Understand your literature.
+            <br />
+            Not just collect it.
+          </h1>
+
+          <p className="text-[#6B6B78] mb-10 max-w-[560px] mx-auto" style={{ fontSize: "17px", lineHeight: 1.6 }}>
+            Upload your research question and PDFs — get thematic clusters, alignment assessment, cited Q&A, and gap analysis in seconds.
+          </p>
+
+          <button 
+            onClick={() => router.push("/new")}
+            className="px-8 py-3 rounded-lg text-white transition-opacity hover:opacity-90 cursor-pointer"
+            style={{ backgroundColor: "#1F5C45", fontSize: "16px", fontWeight: 500 }}
+          >
             Start a New Project
           </button>
-        </Link>
+        </div>
 
-        {/* Feature Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-20 max-w-3xl w-full px-4">
-          {[
-            {
-              icon: (
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M12 8v4l2 2" />
-                </svg>
-              ),
-              title: "Orientation View",
-              desc: "See how your library aligns with your research question at a glance.",
-            },
-            {
-              icon: (
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
-              ),
-              title: "Q&A with Citations",
-              desc: "Ask questions and get answers grounded in your actual documents.",
-            },
-            {
-              icon: (
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="11" cy="11" r="8" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-              ),
-              title: "Gap Detection",
-              desc: "Discover what's missing from your literature before your committee does.",
-            },
-          ].map((card) => (
-            <div
-              key={card.title}
-              className="card flex flex-col items-center text-center px-6 py-8"
-            >
-              <div className="w-12 h-12 rounded-xl bg-cream-dark flex items-center justify-center mb-4 text-forest">
-                {card.icon}
-              </div>
-              <h3
-                className="text-base font-bold text-charcoal mb-2"
-                style={{ fontFamily: "var(--font-heading)" }}
-              >
-                {card.title}
-              </h3>
-              <p className="text-sm text-slate leading-relaxed">{card.desc}</p>
-            </div>
-          ))}
+        {/* Features */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-[960px] mt-20 mb-16 w-full">
+          <FeatureCard
+            icon={<Compass size={24} className="text-[#1F5C45]" />}
+            title="Orientation View"
+            description="See how your library aligns with your research question at a glance."
+          />
+          <FeatureCard
+            icon={<MessageSquare size={24} className="text-[#1F5C45]" />}
+            title="Q&A with Citations"
+            description="Ask questions and get answers grounded in your actual documents."
+          />
+          <FeatureCard
+            icon={<Search size={24} className="text-[#1F5C45]" />}
+            title="Gap Detection"
+            description="Discover what's missing from your literature before your committee does."
+          />
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="py-8 text-center">
-        <p className="text-xs text-slate">
-          LitLens · Built for researchers, by researchers
-        </p>
+      <footer className="text-center py-8 text-[#6B6B78]" style={{ fontSize: "12px", letterSpacing: "0.04em" }}>
+        LitLens · University of Nueva Caceres, School of Computer and Information Sciences
       </footer>
     </div>
-    </>
+  );
+}
+
+function FeatureCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <div className="bg-white border border-[#E4E2DC] rounded-lg p-6 text-center shadow-sm">
+      <div className="w-12 h-12 rounded-lg bg-[#EBF2EE] flex items-center justify-center mx-auto mb-4">
+        {icon}
+      </div>
+      <h3 className="mb-2 font-medium" style={{ color: "#1C1C1E", fontSize: "18px" }}>{title}</h3>
+      <p className="text-[#6B6B78]" style={{ fontSize: "14px", lineHeight: 1.6 }}>
+        {description}
+      </p>
+    </div>
   );
 }

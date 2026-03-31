@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateText } from "@/lib/openai";
+import { verifyProjectAccess } from "@/lib/auth";
 
 export const maxDuration = 60;
 
@@ -19,7 +20,11 @@ export async function POST(
   try {
     const { id: projectId } = await params;
 
-    // Fetch project with cluster data
+    const pAccess = await prisma.project.findUnique({ where: { id: projectId }, select: { userId: true } });
+    if (!pAccess) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!(await verifyProjectAccess(pAccess.userId))) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+
+    // Get project context and clusters data
     const project = await prisma.project.findUnique({
       where: { id: projectId },
       select: {
@@ -176,6 +181,10 @@ export async function GET(
 ) {
   try {
     const { id: projectId } = await params;
+
+    const pAccess = await prisma.project.findUnique({ where: { id: projectId }, select: { userId: true } });
+    if (!pAccess) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!(await verifyProjectAccess(pAccess.userId))) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
 
     const gaps = await prisma.gap.findMany({
       where: { projectId },

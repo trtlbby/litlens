@@ -5,6 +5,7 @@ import {
   generateText,
   cosineSimilarity,
 } from "@/lib/openai";
+import { verifyProjectAccess } from "@/lib/auth";
 
 export const maxDuration = 300;
 
@@ -28,6 +29,10 @@ export async function POST(
 ) {
   try {
     const { id: projectId } = await params;
+
+    const pAccess = await prisma.project.findUnique({ where: { id: projectId }, select: { userId: true } });
+    if (!pAccess) return NextResponse.json({ error: { code: "NOT_FOUND", message: "Project not found" } }, { status: 404 });
+    if (!(await verifyProjectAccess(pAccess.userId))) return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Unauthorized" } }, { status: 403 });
 
     // Verify project exists
     const project = await prisma.project.findUnique({
@@ -134,6 +139,9 @@ export async function POST(
       docNames: string[];
     }[] = [];
 
+    const batchPrompts: string[] = [];
+
+    // First, collect the sample texts for each cluster
     for (const [clusterIdx, chunks] of clusterGroups) {
       // Sort by distance (closest to centroid first)
       chunks.sort((a, b) => a.distance - b.distance);
@@ -145,54 +153,90 @@ export async function POST(
         (id) => docMap.get(id)?.title || docMap.get(id)?.filename || "Unknown"
       );
 
-      // Build prompt for Gemini to label + summarize the cluster
+      // Save base data (labels will be filled after the batch request)
+      clusterData.push({
+        clusterIndex: clusterIdx,
+        label: `Cluster ${clusterIdx + 1}`,
+        summary: "Generating summary...",
+        centroid: clusterResult.centroids[clusterIdx],
+        chunks: chunks.map((c) => ({ chunkId: c.chunkId, distance: c.distance })),
+        docCount: uniqueDocIds.length,
+        docNames,
+      });
+
       const sampleTexts = topChunks
-        .map((c, i) => `[${i + 1}] ${c.text}`)
-        .join("\n\n");
+        .map((c, i) => `[Document Snippet ${i + 1}]: ${c.text}`)
+        .join("\n");
+      batchPrompts.push(`--- CLUSTER ${clusterIdx} ---\n${sampleTexts}`);
+    }
 
-      const labelPrompt = `You are analyzing a cluster of academic text passages from a literature review. These passages were grouped together by semantic similarity.
+    // Batched MEGA-PROMPT for all clusters, summary, and gaps to save API quota!
+    let librarySummary = "Summary generation failed or is pending.";
+    let notableGapsArr: string[] = [];
 
-Here are the 5 most representative passages from this cluster:
+    if (batchPrompts.length > 0) {
+      const megaPrompt = `You are an expert research assistant. I have grouped academic text snippets into ${batchPrompts.length} thematic clusters.
+${project.researchQuestion ? `\nThe user's specific Research Question is: "${project.researchQuestion}"\n` : ""}
+Please perform THREE tasks based on the provided clusters:
 
-${sampleTexts}
+1. CLUSTER LABELING: For EACH cluster, provide a short label (3-6 words) and a one-sentence summary.
+2. LIBRARY SUMMARY: Write a 2-3 sentence plain-English summary of what this entire library covers. Write in second person ("Your library...").
+3. GAP DETECTION: ${project.researchQuestion ? `Identify 2-3 important topics highly relevant to the research question that are MISSING or underrepresented in these clusters.` : `Identify 2-3 important topics broadly expected but missing.`}
 
-Based on these passages, provide:
-1. A short, descriptive label for this thematic cluster (3-6 words, like "Technology Adoption Barriers" or "AI in Clinical Diagnostics")
-2. A one-sentence summary of what this cluster covers
+Respond EXACTLY in this format:
 
-Respond in this exact format (no markdown):
-LABEL: [your label here]
-SUMMARY: [your summary here]`;
+=== CLUSTERS ===
+CLUSTER 0
+LABEL: [Label 0]
+SUMMARY: [Summary 0]
+
+CLUSTER 1
+LABEL: [Label 1]
+SUMMARY: [Summary 1]
+
+=== LIBRARY SUMMARY ===
+[Your library summary...]
+
+=== NOTABLE GAPS ===
+• [Gap 1]
+• [Gap 2]
+• [Gap 3]
+
+Here are the clusters:
+
+${batchPrompts.join("\n\n")}`;
 
       try {
-        const llmResponse = await generateText(labelPrompt);
+        const llmResponse = await generateText(megaPrompt);
+        
+        // 1. Parse Clusters
+        for (const cd of clusterData) {
+          const clusterRegex = new RegExp(`CLUSTER ${cd.clusterIndex}\\s*\\nLABEL:\\s*(.+?)\\s*\\nSUMMARY:\\s*(.+)`, "i");
+          const match = llmResponse.match(clusterRegex);
+          if (match) {
+            cd.label = match[1].trim();
+            cd.summary = match[2].trim();
+          }
+        }
 
-        const labelMatch = llmResponse.match(/LABEL:\s*(.+)/i);
-        const summaryMatch = llmResponse.match(/SUMMARY:\s*(.+)/i);
+        // 2. Parse Library Summary
+        const summaryMatch = llmResponse.match(/===\s*LIBRARY SUMMARY\s*===\s*\n([\s\S]*?)(?=\n===\s*NOTABLE GAPS|$)/i);
+        if (summaryMatch && summaryMatch[1].trim()) {
+          librarySummary = summaryMatch[1].trim();
+        }
 
-        const label = labelMatch?.[1]?.trim() || `Cluster ${clusterIdx + 1}`;
-        const summary = summaryMatch?.[1]?.trim() || "No summary available.";
+        // 3. Parse Notable Gaps
+        const gapsMatch = llmResponse.match(/===\s*NOTABLE GAPS\s*===\s*\n([\s\S]*?)$/i);
+        if (gapsMatch && gapsMatch[1].trim()) {
+           notableGapsArr = gapsMatch[1]
+             .split("\n")
+             .map((l) => l.replace(/^[•\-\d\.]\s*/, "").trim()) // remove bullets
+             .filter((l) => l.length > 0)
+             .slice(0, 3);
+        }
 
-        clusterData.push({
-          clusterIndex: clusterIdx,
-          label,
-          summary,
-          centroid: clusterResult.centroids[clusterIdx],
-          chunks: chunks.map((c) => ({ chunkId: c.chunkId, distance: c.distance })),
-          docCount: uniqueDocIds.length,
-          docNames,
-        });
       } catch (error) {
-        console.error(`Failed to label cluster ${clusterIdx}:`, error);
-        clusterData.push({
-          clusterIndex: clusterIdx,
-          label: `Cluster ${clusterIdx + 1}`,
-          summary: "Could not generate summary.",
-          centroid: clusterResult.centroids[clusterIdx],
-          chunks: chunks.map((c) => ({ chunkId: c.chunkId, distance: c.distance })),
-          docCount: uniqueDocIds.length,
-          docNames,
-        });
+        console.error("Batched labeling/summary failed:", error);
       }
     }
 
@@ -230,7 +274,6 @@ SUMMARY: [your summary here]`;
     // ─── Step 5: Alignment scoring ───
     let alignmentScore = 0;
     let strongCoverage: string[] = [];
-    let notableGapsArr: string[] = [];
 
     if (project.researchQuestion) {
       try {
@@ -259,20 +302,7 @@ SUMMARY: [your summary here]`;
           .sort((a, b) => b.similarity - a.similarity)
           .map((s) => s.label);
 
-        // Detect gaps via Gemini
-        const clusterLabels = clusterData.map((c) => c.label).join(", ");
-        const gapPrompt = `A researcher's question is: "${project.researchQuestion}"
-
-Their library covers these thematic clusters: ${clusterLabels}
-
-What 2-3 important topics relevant to this research question are NOT covered by these clusters? Respond with just the topic names, one per line, no numbering or bullets.`;
-
-        const gapResponse = await generateText(gapPrompt);
-        notableGapsArr = gapResponse
-          .split("\n")
-          .map((l) => l.trim())
-          .filter((l) => l.length > 0)
-          .slice(0, 3);
+        // Detected gaps are now handled in the mega-prompt!
       } catch (error) {
         console.error("Alignment scoring error:", error);
         alignmentScore = 50; // default
@@ -280,26 +310,7 @@ What 2-3 important topics relevant to this research question are NOT covered by 
     }
 
     // ─── Step 6: Library summary via Gemini ───
-    let librarySummary = "";
-    try {
-      const clusterSummaries = clusterData
-        .map((cd) => `• ${cd.label} (${cd.docCount} docs): ${cd.summary}`)
-        .join("\n");
-
-      const summaryPrompt = `You are summarizing a researcher's literature library. Here are the thematic clusters found:
-
-${clusterSummaries}
-
-Total documents: ${documents.length}
-${project.researchQuestion ? `Research question: "${project.researchQuestion}"` : ""}
-
-Write a 3-4 sentence plain-English summary of what this library covers, noting strengths and any apparent gaps. Write in second person ("Your library..."). Do not use markdown.`;
-
-      librarySummary = await generateText(summaryPrompt);
-    } catch (error) {
-      console.error("Summary generation error:", error);
-      librarySummary = "Unable to generate library summary at this time.";
-    }
+    // Library summary is now handled in the mega-prompt above!
 
     // ─── Step 7: Update project with orientation data ───
     await prisma.project.update({
@@ -349,6 +360,10 @@ export async function GET(
 ) {
   try {
     const { id: projectId } = await params;
+
+    const pAccess = await prisma.project.findUnique({ where: { id: projectId }, select: { userId: true } });
+    if (!pAccess) return NextResponse.json({ error: { code: "NOT_FOUND", message: "Project not found" } }, { status: 404 });
+    if (!(await verifyProjectAccess(pAccess.userId))) return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Unauthorized" } }, { status: 403 });
 
     const project = await prisma.project.findUnique({
       where: { id: projectId },

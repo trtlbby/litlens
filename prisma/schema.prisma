@@ -14,6 +14,7 @@ datasource db {
 /// A research project (one per researcher session in V1)
 model Project {
   id               String     @id @default(uuid()) @db.Uuid
+  userId           String?    @map("user_id")
   title            String?
   researchQuestion String?    @map("research_question")
   scopeContext     String?    @map("scope_context")
@@ -24,7 +25,9 @@ model Project {
   strongCoverage   String?    @map("strong_coverage")
   notableGaps      String?    @map("notable_gaps")
   createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @default(now()) @updatedAt @map("updated_at")
 
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
   documents Document[]
   chunks    Chunk[]
   clusters  Cluster[]
@@ -143,4 +146,64 @@ model QaSource {
   document  Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@map("qa_sources")
+}
+
+// -----------------------------------------------------------------------------
+// NextAuth (Auth.js) Required Models
+// -----------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime? @map("email_verified")
+  image         String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  
+  accounts      Account[]
+  sessions      Session[]
+  projects      Project[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
 }

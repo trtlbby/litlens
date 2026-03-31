@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { embedText, generateText } from "@/lib/openai";
+import { verifyProjectAccess } from "@/lib/auth";
 
 export const maxDuration = 60;
 
@@ -19,6 +20,11 @@ export async function POST(
 ) {
   try {
     const { id: projectId } = await params;
+
+    const pAccess = await prisma.project.findUnique({ where: { id: projectId }, select: { userId: true } });
+    if (!pAccess) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!(await verifyProjectAccess(pAccess.userId))) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+
     const body = await request.json();
     const { question } = body;
 
@@ -183,6 +189,10 @@ export async function GET(
 ) {
   try {
     const { id: projectId } = await params;
+
+    const pAccess = await prisma.project.findUnique({ where: { id: projectId }, select: { userId: true } });
+    if (!pAccess) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!(await verifyProjectAccess(pAccess.userId))) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
 
     const sessions = await prisma.qaSession.findMany({
       where: { projectId },

@@ -3,6 +3,8 @@ import { Playfair_Display, Inter } from "next/font/google";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { AuthProvider } from "@/components/auth/AuthContext";
+
 const playfair = Playfair_Display({
   variable: "--font-heading",
   subsets: ["latin"],
@@ -58,10 +60,11 @@ export default function RootLayout({
       className={`${playfair.variable} ${inter.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {children}
-        <Analytics />
-        <SpeedInsights />
-        <script
+        <AuthProvider>
+          {children}
+          <Analytics />
+          <SpeedInsights />
+          <script
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
@@ -72,6 +75,7 @@ export default function RootLayout({
             `,
           }}
         />
+        </AuthProvider>
       </body>
     </html>
   );

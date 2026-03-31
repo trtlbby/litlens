@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import { Copy, Check, Loader2, RefreshCw } from "lucide-react";
+import { AuthGate } from "@/components/auth/AuthGate";
 
 /* ─── Types ─── */
 interface Gap {
@@ -155,6 +156,7 @@ export default function GapsPage({
   }
 
   return (
+    <AuthGate featureName="Gap Detection">
     <div className="space-y-8">
       {/* Header */}
       <div className="flex items-start justify-between">
@@ -334,6 +336,7 @@ export default function GapsPage({
         )
       )}
     </div>
+    </AuthGate>
   );
 }
 

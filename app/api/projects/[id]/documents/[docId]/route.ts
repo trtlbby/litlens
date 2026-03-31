@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { verifyProjectAccess } from "@/lib/auth";
 
 /**
  * DELETE /api/projects/:id/documents/:docId — Remove a document and all its chunks
@@ -11,7 +12,11 @@ export async function DELETE(
   try {
     const { id: projectId, docId } = await params;
 
-    // Verify the document belongs to this project
+    const pAccess = await prisma.project.findUnique({ where: { id: projectId }, select: { userId: true } });
+    if (!pAccess) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!(await verifyProjectAccess(pAccess.userId))) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+
+    // First check if the document belongs to this project
     const doc = await prisma.document.findFirst({
       where: { id: docId, projectId },
     });

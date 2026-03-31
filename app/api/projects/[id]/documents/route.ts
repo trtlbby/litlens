@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { embedTexts } from "@/lib/openai";
 import { createChunks } from "@/lib/chunker";
+import { verifyProjectAccess } from "@/lib/auth";
 
 // Allow function to run up to 60 seconds (Vercel Hobby max)
 export const maxDuration = 60;
@@ -26,14 +27,21 @@ export async function POST(
     try {
         const { id: projectId } = await params;
 
-        // Verify project exists
+        // Verify project exists and user has access
         const project = await prisma.project.findUnique({
             where: { id: projectId },
+            select: { userId: true }
         });
         if (!project) {
             return NextResponse.json(
                 { error: { code: "NOT_FOUND", message: "Project not found" } },
                 { status: 404 }
+            );
+        }
+        if (!(await verifyProjectAccess(project.userId))) {
+            return NextResponse.json(
+                { error: { code: "UNAUTHORIZED", message: "Unauthorized" } },
+                { status: 403 }
             );
         }
 
@@ -220,6 +228,13 @@ export async function GET(
 ) {
     try {
         const { id: projectId } = await params;
+
+        const project = await prisma.project.findUnique({
+            where: { id: projectId },
+            select: { userId: true }
+        });
+        if (!project) return NextResponse.json({ error: "Project not found" }, { status: 404 });
+        if (!(await verifyProjectAccess(project.userId))) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
 
         const documents = await prisma.document.findMany({
             where: { projectId },
