@@ -2,16 +2,22 @@
 
 import Link from "next/link";
 import Header from "@/components/ui/header";
+import { useState } from "react";
+import { SplashScreen } from "@/components/ui/splash-screen";
 
 export default function LandingPage() {
-  return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
+  const [showSplash, setShowSplash] = useState(true);
 
-      {/* Hero Section */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 -mt-8">
-        {/* Decorative elements */}
-        <div className="flex items-center gap-6 mb-10">
+  return (
+    <>
+      {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
+      <div className="min-h-screen flex flex-col">
+        <Header />
+
+        {/* Hero Section */}
+        <main className="flex-1 flex flex-col items-center justify-center px-4 -mt-8">
+          {/* Decorative elements */}
+          <div className="flex items-center gap-6 mb-10">
           <div className="w-12 h-[2px] bg-forest/30" />
           <div className="flex gap-3">
             <div
@@ -138,5 +144,6 @@ export default function LandingPage() {
         </p>
       </footer>
     </div>
+    </>
   );
 }
