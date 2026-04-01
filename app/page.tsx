@@ -3,11 +3,18 @@
 import { useRouter } from "next/navigation";
 import { LitLensLogo } from "@/components/ui/LitLensLogo";
 import { Compass, MessageSquare, Search } from "lucide-react";
-import { LoginModal } from "@/components/auth/LoginModal";
+import dynamic from "next/dynamic";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { useAuth } from "@/components/auth/AuthContext";
 import { useState, useEffect } from "react";
-import { SplashScreen } from "@/components/ui/splash-screen";
+
+const LoginModal = dynamic(() =>
+  import("@/components/auth/LoginModal").then((mod) => mod.LoginModal)
+);
+
+const SplashScreen = dynamic(() =>
+  import("@/components/ui/splash-screen").then((mod) => mod.SplashScreen)
+);
 
 export default function LandingPage() {
   const router = useRouter();
