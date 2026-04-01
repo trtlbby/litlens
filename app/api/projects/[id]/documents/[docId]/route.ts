@@ -40,3 +40,89 @@ export async function DELETE(
     );
   }
 }
+
+/**
+ * GET /api/projects/:id/documents/:docId — Fetch document and all chunks
+ */
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string; docId: string }> }
+) {
+  try {
+    const { id: projectId, docId } = await params;
+
+    const pAccess = await prisma.project.findUnique({ where: { id: projectId }, select: { userId: true } });
+    if (!pAccess) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!(await verifyProjectAccess(pAccess.userId))) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+
+    const doc = await prisma.document.findFirst({
+      where: { id: docId, projectId },
+      select: {
+        id: true,
+        filename: true,
+        title: true,
+        authors: true,
+        year: true,
+        tag: true,
+        createdAt: true,
+        chunks: {
+          orderBy: { chunkIndex: "asc" },
+          select: {
+            id: true,
+            chunkIndex: true,
+            text: true,
+          }
+        }
+      }
+    });
+
+    if (!doc) {
+      return NextResponse.json({ error: "Document not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(doc);
+  } catch (error) {
+    console.error("Failed to fetch document:", error);
+    return NextResponse.json({ error: "Failed to fetch document" }, { status: 500 });
+  }
+}
+
+/**
+ * PATCH /api/projects/:id/documents/:docId — Update document title/tag
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; docId: string }> }
+) {
+  try {
+    const { id: projectId, docId } = await params;
+
+    const pAccess = await prisma.project.findUnique({ where: { id: projectId }, select: { userId: true } });
+    if (!pAccess) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!(await verifyProjectAccess(pAccess.userId))) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+
+    const body = await request.json().catch(() => ({}));
+    
+    // Validate the document belongs to project
+    const docCheck = await prisma.document.findFirst({
+      where: { id: docId, projectId }
+    });
+
+    if (!docCheck) {
+      return NextResponse.json({ error: "Document not found" }, { status: 404 });
+    }
+
+    const updatedDoc = await prisma.document.update({
+      where: { id: docId },
+      data: {
+        title: body.title !== undefined ? body.title : docCheck.title,
+        tag: body.tag !== undefined ? (body.tag === "" ? null : body.tag) : docCheck.tag,
+      }
+    });
+
+    return NextResponse.json(updatedDoc);
+  } catch (error) {
+    console.error("Failed to update document:", error);
+    return NextResponse.json({ error: "Failed to update document" }, { status: 500 });
+  }
+}

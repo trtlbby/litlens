@@ -11,6 +11,9 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+import { DocumentPanel } from "@/components/documents/DocumentPanel";
+import { AuthGate } from "@/components/auth/AuthGate";
+
 /* ─── Types ─── */
 interface DocItem {
   id: string;
@@ -20,6 +23,7 @@ interface DocItem {
   year: number | null;
   chunk_count: number;
   created_at: string;
+  tag: string | null;
 }
 
 /* ─── Documents Page ─── */
@@ -34,6 +38,7 @@ export default function DocumentsPage({
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [viewDocId, setViewDocId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   const fetchDocuments = async () => {
@@ -85,220 +90,243 @@ export default function DocumentsPage({
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h2 style={{ fontFamily: "var(--font-heading)" }}>Your Documents</h2>
-          <p className="text-[#6B6B78]" style={{ fontSize: "14px" }}>
-            {docs.length} document{docs.length !== 1 ? "s" : ""} uploaded
-          </p>
-        </div>
-        <Button variant="ghost" onClick={() => router.push("/new")}>
-          <Upload size={16} /> Add More Documents
-        </Button>
-      </div>
-
-      {error && (
-        <p className="text-[#C0392B] text-sm">{error}</p>
-      )}
-
-      {docs.length === 0 ? (
-        <div className="bg-white border border-[#E4E2DC] rounded-lg p-12 text-center">
-          <p className="text-[#6B6B78]" style={{ fontSize: "15px" }}>
-            No documents uploaded yet.
-          </p>
-          <Button
-            className="mt-4"
-            onClick={() => router.push("/new")}
-          >
-            Upload Documents
+    <AuthGate featureName="Documents Manager">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 style={{ fontFamily: "var(--font-heading)" }}>Your Documents</h2>
+            <p className="text-[#6B6B78]" style={{ fontSize: "14px" }}>
+              {docs.length} document{docs.length !== 1 ? "s" : ""} uploaded
+            </p>
+          </div>
+          <Button variant="ghost" onClick={() => router.push("/new")}>
+            <Upload size={16} /> Add More Documents
           </Button>
         </div>
-      ) : (
-        /* Table */
-        <div className="bg-white border border-[#E4E2DC] rounded-lg overflow-hidden">
-          {/* Table header */}
-          <div className="hidden md:grid grid-cols-[48px_1fr_120px_80px_100px_88px] gap-2 px-5 py-3 border-b border-[#E4E2DC] bg-[#FAFAF8]">
-            {["#", "Document", "Authors", "Year", "Chunks", "Actions"].map(
-              (h) => (
-                <span
-                  key={h}
-                  className="text-[#6B6B78]"
-                  style={{
-                    fontSize: "12px",
-                    letterSpacing: "0.04em",
-                  }}
-                >
-                  {h}
-                </span>
-              )
-            )}
+
+        {error && (
+          <p className="text-[#C0392B] text-sm">{error}</p>
+        )}
+
+        {docs.length === 0 ? (
+          <div className="bg-white border border-[#E4E2DC] rounded-lg p-12 text-center">
+            <p className="text-[#6B6B78]" style={{ fontSize: "15px" }}>
+              No documents uploaded yet.
+            </p>
+            <Button
+              className="mt-4"
+              onClick={() => router.push("/new")}
+            >
+              Upload Documents
+            </Button>
           </div>
-
-          {/* Table rows */}
-          {docs.map((doc, i) => (
-            <div key={doc.id}>
-              <div
-                className={`grid grid-cols-1 md:grid-cols-[48px_1fr_120px_80px_100px_88px] gap-2 px-5 py-3.5 items-center cursor-pointer transition-colors hover:bg-[#F0EDE6] ${
-                  i % 2 === 1 ? "bg-[#FAFAF8]" : "bg-white"
-                }`}
-                onClick={() => toggleExpand(doc.id)}
-              >
-                <span
-                  className="text-[#6B6B78] hidden md:block"
-                  style={{ fontSize: "13px" }}
-                >
-                  {i + 1}
-                </span>
-                <div className="flex items-center gap-2">
-                  {expandedId === doc.id ? (
-                    <ChevronDown
-                      size={14}
-                      className="text-[#6B6B78] flex-shrink-0"
-                    />
-                  ) : (
-                    <ChevronRight
-                      size={14}
-                      className="text-[#6B6B78] flex-shrink-0"
-                    />
-                  )}
-                  <div className="min-w-0">
-                    <span
-                      className="text-[#1C1C1E] truncate block"
-                      style={{ fontSize: "14px" }}
-                    >
-                      {doc.title || doc.filename}
-                    </span>
-                    {doc.title && doc.title !== doc.filename && (
-                      <span
-                        className="text-[#6B6B78] truncate block"
-                        style={{ fontSize: "12px" }}
-                      >
-                        {doc.filename}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <span
-                  className="text-[#6B6B78] hidden md:block truncate"
-                  style={{ fontSize: "13px" }}
-                >
-                  {doc.authors || "—"}
-                </span>
-                <span
-                  className="text-[#6B6B78] hidden md:block"
-                  style={{ fontSize: "13px" }}
-                >
-                  {doc.year || "—"}
-                </span>
-                <span
-                  className="text-[#6B6B78] hidden md:block"
-                  style={{ fontSize: "13px" }}
-                >
-                  {doc.chunk_count} chunks
-                </span>
-                <div className="flex items-center gap-1">
-                  <button
-                    className="w-8 h-8 flex items-center justify-center rounded hover:bg-[#EBF2EE] text-[#6B6B78] hover:text-[#1F5C45] transition-colors cursor-pointer"
-                    onClick={(e) => e.stopPropagation()}
-                    title="View"
-                  >
-                    <Eye size={16} />
-                  </button>
-                  <button
-                    className="w-8 h-8 flex items-center justify-center rounded hover:bg-[#FDF2F0] text-[#6B6B78] hover:text-[#C0392B] transition-colors cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteId(doc.id);
+        ) : (
+          /* Table */
+          <div className="bg-white border border-[#E4E2DC] rounded-lg overflow-hidden">
+            {/* Table header */}
+            <div className="hidden md:grid grid-cols-[48px_1fr_120px_80px_100px_88px] gap-2 px-5 py-3 border-b border-[#E4E2DC] bg-[#FAFAF8]">
+              {["#", "Document", "Authors", "Year", "Chunks", "Actions"].map(
+                (h) => (
+                  <span
+                    key={h}
+                    className="text-[#6B6B78]"
+                    style={{
+                      fontSize: "12px",
+                      letterSpacing: "0.04em",
                     }}
-                    title="Remove"
                   >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Expanded info */}
-              {expandedId === doc.id && (
-                <div className="px-5 py-4 bg-[#F0EDE6] border-t border-[#E4E2DC]">
-                  <div className="md:pl-12 space-y-2">
-                    <div className="flex items-center gap-4 flex-wrap">
-                      {doc.authors && (
-                        <span
-                          className="text-[#6B6B78]"
-                          style={{ fontSize: "13px" }}
-                        >
-                          Authors: <strong className="text-[#1C1C1E]">{doc.authors}</strong>
-                        </span>
-                      )}
-                      {doc.year && (
-                        <span
-                          className="text-[#6B6B78]"
-                          style={{ fontSize: "13px" }}
-                        >
-                          Year: <strong className="text-[#1C1C1E]">{doc.year}</strong>
-                        </span>
-                      )}
-                      <span
-                        className="px-2 py-0.5 rounded text-white bg-[#1F5C45]"
-                        style={{ fontSize: "11px" }}
-                      >
-                        {doc.chunk_count} chunks embedded
-                      </span>
-                    </div>
-                    <p
-                      className="text-[#6B6B78]"
-                      style={{ fontSize: "12px" }}
-                    >
-                      Uploaded {new Date(doc.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
+                    {h}
+                  </span>
+                )
               )}
             </div>
-          ))}
-        </div>
-      )}
 
-      {/* Delete Confirmation Modal */}
-      {deleteId && (
-        <div
-          className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-5"
-          onClick={() => setDeleteId(null)}
-        >
+            {/* Table rows */}
+            {docs.map((doc, i) => (
+              <div key={doc.id}>
+                <div
+                  className={`grid grid-cols-1 md:grid-cols-[48px_1fr_120px_80px_100px_88px] gap-2 px-5 py-3.5 items-center cursor-pointer transition-colors hover:bg-[#F0EDE6] ${i % 2 === 1 ? "bg-[#FAFAF8]" : "bg-white"
+                    }`}
+                  onClick={() => toggleExpand(doc.id)}
+                >
+                  <span
+                    className="text-[#6B6B78] hidden md:block"
+                    style={{ fontSize: "13px" }}
+                  >
+                    {i + 1}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {expandedId === doc.id ? (
+                      <ChevronDown
+                        size={14}
+                        className="text-[#6B6B78] flex-shrink-0"
+                      />
+                    ) : (
+                      <ChevronRight
+                        size={14}
+                        className="text-[#6B6B78] flex-shrink-0"
+                      />
+                    )}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="text-[#1C1C1E] truncate block"
+                          style={{ fontSize: "14px" }}
+                        >
+                          {doc.title || doc.filename}
+                        </span>
+                        {doc.tag && (
+                          <span className={`px-2 py-[2px] rounded-sm text-[10px] font-medium border ${doc.tag === "Highly Useful" ? "bg-[#EBF2EE] text-[#1F5C45] border-[#1F5C45]" :
+                              doc.tag === "Reviewing" ? "bg-[#FEF5ED] text-[#D4821A] border-[#D4821A]" :
+                                doc.tag === "Not Useful" ? "bg-[#FDF2F0] text-[#C0392B] border-[#C0392B]" :
+                                  "bg-[#E4E2DC] text-[#1C1C1E] border-[#6B6B78]"
+                            }`}>
+                            {doc.tag}
+                          </span>
+                        )}
+                      </div>
+                      {doc.title && doc.title !== doc.filename && (
+                        <span
+                          className="text-[#6B6B78] truncate block"
+                          style={{ fontSize: "12px" }}
+                        >
+                          {doc.filename}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span
+                    className="text-[#6B6B78] hidden md:block truncate"
+                    style={{ fontSize: "13px" }}
+                  >
+                    {doc.authors || "—"}
+                  </span>
+                  <span
+                    className="text-[#6B6B78] hidden md:block"
+                    style={{ fontSize: "13px" }}
+                  >
+                    {doc.year || "—"}
+                  </span>
+                  <span
+                    className="text-[#6B6B78] hidden md:block"
+                    style={{ fontSize: "13px" }}
+                  >
+                    {doc.chunk_count} chunks
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      className="w-8 h-8 flex items-center justify-center rounded hover:bg-[#EBF2EE] text-[#6B6B78] hover:text-[#1F5C45] transition-colors cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setViewDocId(doc.id);
+                      }}
+                      title="View & Edit"
+                    >
+                      <Eye size={16} />
+                    </button>
+                    <button
+                      className="w-8 h-8 flex items-center justify-center rounded hover:bg-[#FDF2F0] text-[#6B6B78] hover:text-[#C0392B] transition-colors cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteId(doc.id);
+                      }}
+                      title="Remove"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Expanded info */}
+                {expandedId === doc.id && (
+                  <div className="px-5 py-4 bg-[#F0EDE6] border-t border-[#E4E2DC]">
+                    <div className="md:pl-12 space-y-2">
+                      <div className="flex items-center gap-4 flex-wrap">
+                        {doc.authors && (
+                          <span
+                            className="text-[#6B6B78]"
+                            style={{ fontSize: "13px" }}
+                          >
+                            Authors: <strong className="text-[#1C1C1E]">{doc.authors}</strong>
+                          </span>
+                        )}
+                        {doc.year && (
+                          <span
+                            className="text-[#6B6B78]"
+                            style={{ fontSize: "13px" }}
+                          >
+                            Year: <strong className="text-[#1C1C1E]">{doc.year}</strong>
+                          </span>
+                        )}
+                        <span
+                          className="px-2 py-0.5 rounded text-white bg-[#1F5C45]"
+                          style={{ fontSize: "11px" }}
+                        >
+                          {doc.chunk_count} chunks embedded
+                        </span>
+                      </div>
+                      <p
+                        className="text-[#6B6B78]"
+                        style={{ fontSize: "12px" }}
+                      >
+                        Uploaded {new Date(doc.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {deleteId && (
           <div
-            className="bg-white rounded-lg p-6 max-w-[400px] w-full border border-[#E4E2DC]"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-5"
+            onClick={() => setDeleteId(null)}
           >
-            <h3
-              className="text-[#1C1C1E] mb-2"
-              style={{ fontFamily: "var(--font-heading)" }}
+            <div
+              className="bg-white rounded-lg p-6 max-w-[400px] w-full border border-[#E4E2DC]"
+              onClick={(e) => e.stopPropagation()}
             >
-              Remove document?
-            </h3>
-            <p
-              className="text-[#6B6B78] mb-6"
-              style={{ fontSize: "14px", lineHeight: 1.5 }}
-            >
-              This will remove the document and its chunks from your project.
-              You may need to re-run orientation analysis after. This action
-              cannot be undone.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <Button variant="secondary" onClick={() => setDeleteId(null)}>
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => handleDelete(deleteId)}
+              <h3
+                className="text-[#1C1C1E] mb-2"
+                style={{ fontFamily: "var(--font-heading)" }}
               >
-                Remove
-              </Button>
+                Remove document?
+              </h3>
+              <p
+                className="text-[#6B6B78] mb-6"
+                style={{ fontSize: "14px", lineHeight: 1.5 }}
+              >
+                This will remove the document and its chunks from your project.
+                You may need to re-run orientation analysis after. This action
+                cannot be undone.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <Button variant="secondary" onClick={() => setDeleteId(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => handleDelete(deleteId)}
+                >
+                  Remove
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+
+        {/* Sliding Document Details Panel */}
+        <DocumentPanel
+          projectId={projectId}
+          docId={viewDocId}
+          onClose={() => setViewDocId(null)}
+          onUpdate={fetchDocuments}
+        />
+      </div>
+    </AuthGate>
   );
 }

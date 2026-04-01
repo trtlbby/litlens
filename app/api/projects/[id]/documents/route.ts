@@ -245,6 +245,7 @@ export async function GET(
                 title: true,
                 authors: true,
                 year: true,
+                tag: true,
                 createdAt: true,
                 _count: {
                     select: { chunks: true },
@@ -259,6 +260,7 @@ export async function GET(
                 title: doc.title,
                 authors: doc.authors,
                 year: doc.year,
+                tag: doc.tag,
                 chunk_count: doc._count.chunks,
                 created_at: doc.createdAt,
             })),

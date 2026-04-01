@@ -47,6 +47,7 @@ model Document {
   year      Int?
   bibtex    String?
   fullText  String?  @map("full_text")
+  tag       String?  // for "useful", "not useful", etc.
   createdAt DateTime @default(now()) @map("created_at")
 
   project  Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)

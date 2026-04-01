@@ -181,7 +181,7 @@ Please perform THREE tasks based on the provided clusters:
 
 1. CLUSTER LABELING: For EACH cluster, provide a short label (3-6 words) and a one-sentence summary.
 2. LIBRARY SUMMARY: Write a 2-3 sentence plain-English summary of what this entire library covers. Write in second person ("Your library...").
-3. GAP DETECTION: ${project.researchQuestion ? `Identify 2-3 important topics highly relevant to the research question that are MISSING or underrepresented in these clusters.` : `Identify 2-3 important topics broadly expected but missing.`}
+3. GAP DETECTION: ${project.researchQuestion ? `Identify 2-3 missing or underrepresented topics relevant to the research question.` : `Identify 2-3 important missing topics.`} Provide ONLY short 1-to-3 word tags (e.g., "Cost-effectiveness", "Workforce Training"). Do not write full sentences.
 
 Respond EXACTLY in this format:
 
@@ -195,12 +195,12 @@ LABEL: [Label 1]
 SUMMARY: [Summary 1]
 
 === LIBRARY SUMMARY ===
-[Your library summary...]
+[Your 2-3 sentence library summary...]
 
 === NOTABLE GAPS ===
-• [Gap 1]
-• [Gap 2]
-• [Gap 3]
+• [Tag 1]
+• [Tag 2]
+• [Tag 3]
 
 Here are the clusters:
 
