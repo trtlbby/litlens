@@ -8,7 +8,7 @@ import { UserMenu } from "@/components/auth/UserMenu";
 import { ProjectSwitcher } from "@/components/projects/ProjectSwitcher";
 import { LoginModal } from "@/components/auth/LoginModal";
 import { useAuth } from "@/components/auth/AuthContext";
-import { Compass, MessageSquare, Search, FolderOpen, Menu, X, Lock } from "lucide-react";
+import { Compass, MessageSquare, Search, FolderOpen, Menu, X, Lock, Plus } from "lucide-react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -47,11 +47,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-[#F7F5F0] flex flex-col">
       {/* Top Bar */}
-      <header className="bg-white border-b border-[#E4E2DC] px-5 md:px-8 py-3 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-4">
+      <header className="bg-white border-b border-[#E4E2DC] px-4 md:px-8 py-3 grid grid-cols-[auto,1fr,auto] items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-3">
           <button
-            className="md:hidden p-2 cursor-pointer"
+            className="md:hidden p-2 cursor-pointer rounded-md hover:bg-[#F0EDE6]"
             onClick={() => setMobileNavOpen(!mobileNavOpen)}
+            aria-label="Toggle navigation"
           >
             {mobileNavOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -59,19 +60,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <LitLensLogo />
           </div>
         </div>
-        <p className="hidden md:block text-[#1C1C1E] truncate max-w-[400px]" style={{ fontSize: "14px", fontWeight: 500 }}>
+        <p className="text-[#1C1C1E] truncate text-sm md:text-base font-semibold text-center md:text-left" style={{ fontFamily: "var(--font-heading)" }}>
           {currentProject?.name ?? "Getting your project..."}
         </p>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-end gap-2 md:gap-3">
           {isLoggedIn ? (
             <>
               {canCreateProject && (
-                <button 
-                  onClick={() => router.push("/new")}
-                  className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-[#F7F5F0] text-[#1C1C1E] cursor-pointer"
-                >
-                  New Project
-                </button>
+                <>
+                  <button
+                    onClick={() => router.push("/new")}
+                    className="hidden md:inline-flex px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-[#F7F5F0] text-[#1C1C1E] cursor-pointer"
+                  >
+                    New Project
+                  </button>
+                  <button
+                    onClick={() => router.push("/new")}
+                    className="md:hidden inline-flex items-center justify-center p-2 rounded-full bg-[#1F5C45] text-white"
+                    aria-label="Create project"
+                  >
+                    <Plus size={18} />
+                  </button>
+                </>
               )}
               <UserMenu />
             </>
@@ -79,16 +89,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <>
               <button
                 onClick={() => setShowLogin(true)}
-                className="text-black hover:opacity-60 transition-opacity bg-transparent border-none outline-none cursor-pointer"
-                style={{ fontSize: "15px", fontFamily: "var(--font-body)" }}
+                className="text-black hover:opacity-60 transition-opacity bg-transparent border-none outline-none cursor-pointer px-2"
+                style={{ fontSize: "14px", fontFamily: "var(--font-body)" }}
               >
                 Log in
               </button>
               <button 
                 onClick={() => router.push("/new")}
-                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-[#F7F5F0] text-[#1C1C1E] cursor-pointer"
+                className="hidden md:inline-flex px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-[#F7F5F0] text-[#1C1C1E] cursor-pointer"
               >
                 New Project
+              </button>
+              <button
+                onClick={() => router.push("/new")}
+                className="md:hidden inline-flex items-center justify-center p-2 rounded-full bg-[#1F5C45] text-white"
+                aria-label="Create project"
+              >
+                <Plus size={18} />
               </button>
             </>
           )}
@@ -178,12 +195,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto p-5 md:p-8">
+        <main className="flex-1 overflow-y-auto p-5 md:p-8 pb-24 md:pb-8">
           <div className="max-w-[1040px] mx-auto">
             {children}
           </div>
         </main>
       </div>
+
+      {/* Bottom Tab Bar (Mobile) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[#E4E2DC] px-2 py-1.5 pb-[calc(env(safe-area-inset-bottom)+8px)]">
+        <div className="grid grid-cols-4 gap-1">
+          {navItems.map((item) => {
+            const isActive = isActiveProp(item);
+            return (
+              <Link
+                key={item.to}
+                href={item.to}
+                onClick={(e) => handleNavClick(item, e)}
+                className={`flex flex-col items-center justify-center gap-1 py-2 rounded-md transition-colors ${
+                  item.requiresAuth && !isLoggedIn
+                    ? "text-[#B0B0B8]"
+                    : isActive
+                    ? "text-[#1F5C45] bg-[#EBF2EE]"
+                    : "text-[#6B6B78] hover:bg-[#F7F5F0] hover:text-[#1C1C1E]"
+                }`}
+              >
+                <item.icon size={18} />
+                <span className="text-[11px] font-medium leading-none">{item.label.replace("Your Library", "Ask")}</span>
+                {item.requiresAuth && !isLoggedIn && <Lock size={12} className="text-[#B0B0B8]" />}
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
 
       <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} />
     </div>
