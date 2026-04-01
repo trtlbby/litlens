@@ -4,6 +4,7 @@ import "./globals.css";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AuthProvider } from "@/components/auth/AuthContext";
+import { SWRegister } from "@/components/ui/SWRegister";
 
 const playfair = Playfair_Display({
   variable: "--font-heading",
@@ -46,7 +47,7 @@ export const viewport: Viewport = {
   themeColor: "#1F5C45",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({
@@ -64,17 +65,7 @@ export default function RootLayout({
           {children}
           <Analytics />
           <SpeedInsights />
-          <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                  navigator.serviceWorker.register('/sw.js').catch(() => {});
-                });
-              }
-            `,
-          }}
-        />
+          <SWRegister />
         </AuthProvider>
       </body>
     </html>

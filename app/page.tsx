@@ -86,7 +86,7 @@ export default function LandingPage() {
             Not just collect it.
           </h1>
 
-          <p className="text-[#6B6B78] mb-8 md:mb-10 max-w-[560px] mx-auto" style={{ fontSize: "16px", lineHeight: 1.6 }}>
+          <p className="text-[#4A4A4A] mb-8 md:mb-10 max-w-[560px] mx-auto" style={{ fontSize: "16px", lineHeight: 1.6 }}>
             Upload your research question and PDFs — get thematic clusters, alignment assessment, cited Q&A, and gap analysis in seconds.
           </p>
 
@@ -100,7 +100,9 @@ export default function LandingPage() {
         </div>
 
         {/* Features */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 max-w-[960px] mt-14 md:mt-20 mb-16 w-full px-1 sm:px-2">
+        <div className="w-full max-w-[960px] mt-14 md:mt-20 mb-16 px-1 sm:px-2">
+          <h2 className="sr-only">Key capabilities</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 w-full">
           <FeatureCard
             icon={<Compass size={24} className="text-[#1F5C45]" />}
             title="Orientation View"
@@ -116,6 +118,7 @@ export default function LandingPage() {
             title="Gap Detection"
             description="Discover what's missing from your literature before your committee does."
           />
+          </div>
         </div>
       </main>
 
@@ -135,7 +138,7 @@ function FeatureCard({ icon, title, description }: { icon: React.ReactNode; titl
       </div>
       <div className="text-left md:text-center">
         <h3 className="mb-1 md:mb-2 font-medium" style={{ color: "#1C1C1E", fontSize: "17px" }}>{title}</h3>
-        <p className="text-[#6B6B78]" style={{ fontSize: "14px", lineHeight: 1.6 }}>
+        <p className="text-[#4A4A4A]" style={{ fontSize: "14px", lineHeight: 1.6 }}>
           {description}
         </p>
       </div>
