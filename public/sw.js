@@ -41,6 +41,15 @@ self.addEventListener("fetch", (event) => {
   // Skip non-GET requests
   if (request.method !== "GET") return;
 
+  // Avoid caching unsupported schemes (e.g., chrome-extension) and non-http(s)
+  if (![`http:`, `https:`].includes(url.protocol)) return;
+
+  // Avoid opaque requests triggered by devtools/only-if-cached cross-origin
+  if (request.cache === "only-if-cached" && request.mode !== "same-origin") return;
+
+  // Limit to same-origin assets to avoid extension noise and CORS issues
+  if (url.origin !== self.location.origin) return;
+
   // API calls — network only (no caching)
   if (url.pathname.startsWith("/api/")) return;
 
