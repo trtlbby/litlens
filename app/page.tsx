@@ -19,13 +19,15 @@ const SplashScreen = dynamic(() =>
 export default function LandingPage() {
   const router = useRouter();
   const [showLogin, setShowLogin] = useState(false);
-  const [showSplash, setShowSplash] = useState(true);
+  // Start false to avoid server/client markup mismatch; enable in effect if needed
+  const [showSplash, setShowSplash] = useState(false);
   const { isLoggedIn, projects } = useAuth();
   
   useEffect(() => {
-    // Only show splash screen once per browser session
-    if (sessionStorage.getItem("litlens_splashed")) {
-      setShowSplash(false);
+    // Only show splash once per session; defer decision to client to keep SSR/CSR in sync
+    const hasSeen = sessionStorage.getItem("litlens_splashed");
+    if (!hasSeen) {
+      setShowSplash(true);
     }
   }, []);
 
