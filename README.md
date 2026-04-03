@@ -27,11 +27,19 @@ LitLens is an AI-powered research literature analysis platform that transforms a
 
 | Feature | Description |
 |---|---|
-| **Orientation View** | Scores how well your library aligns with your research question and surfaces strong coverage areas and notable gaps at a glance. |
-| **Thematic Clustering** | Automatically groups papers into thematic clusters using K-means over semantic embeddings, labelled by an LLM. |
-| **Q&A with Citations** | Ask free-form questions and receive answers grounded in your actual documents, with source passages and relevance scores. |
-| **Gap Detection** | Identifies topics that are underrepresented or absent from your literature collection relative to your research question. |
-| **Document Management** | Upload multiple PDFs at once; text is extracted automatically (with OCR fallback for scanned pages). |
+| **Passwordless Authentication** | Magic-link email login powered by NextAuth v5. No passwords to remember — just enter your email and click the link. |
+| **Project Management** | Create, rename, and delete research projects (up to 5 per account). Titles are auto-generated from your research question via Gemini. Switch between projects from the sidebar. |
+| **PDF Upload & Extraction** | Drag-and-drop PDF upload (up to 20 files). Text extracted via pdfplumber with Tesseract OCR fallback for scanned pages. Metadata (title, authors, year) is detected automatically. |
+| **Semantic Chunking & Embedding** | Extracted text is split into overlapping 5-sentence chunks and embedded into 3,072-dimension vectors using the Gemini embedding model. Stored in PostgreSQL via pgvector. |
+| **Orientation View** | Scores how well your library aligns with your research question (0–100). Surfaces strong coverage areas, notable gaps, and an AI-generated library summary. |
+| **Thematic Clustering** | Automatically groups chunks into thematic clusters via K-means (auto-k selection). Each cluster receives an LLM-generated label and one-sentence summary. |
+| **Q&A with Citations (RAG)** | Ask free-form questions answered by semantic search over your documents. Responses include source passages with relevance scores (High / Medium / Low). Full Q&A history is persisted. |
+| **Gap Detection** | Identifies 3–6 research topics underrepresented in your library. Each gap includes a priority level (High / Medium), description, and suggested search terms (click to copy). Gaps can be marked as addressed. |
+| **Document Management** | View, edit, tag, and delete documents. Tag documents as *Highly Useful*, *Reviewing*, or *Not Useful*. Inspect individual text chunks with a sliding detail panel and copy-all. |
+| **LLM Rate-Limit Resilience** | Model fallback chain (gemini-2.5-flash-lite → gemini-2.5-flash → gemma-3-12b-it), batched embedding with delays, and exponential backoff retries for free-tier usage. |
+| **Progressive Web App** | Installable on mobile and desktop. Service worker caches static assets with a stale-while-revalidate strategy. API calls are always network-first. |
+| **Responsive Design** | Mobile sidebar overlay, bottom tab bar, responsive document table, and sliding detail panel. Works on phones, tablets, and desktops. |
+| **Animated Splash Screen** | SVG book-scanning animation with status word cycling. Shows once per session. |
 
 ---
 
@@ -78,6 +86,7 @@ LitLens is an AI-powered research literature analysis platform that transforms a
 | Tailwind CSS | 4 | Utility-first styling |
 | Zustand | 5.0.12 | Client state management |
 | Lucide React | 1.7.0 | Icon set |
+| Motion | 12.38.0 | Animation library |
 
 ### Backend (Node.js)
 | Package | Version | Purpose |
@@ -85,6 +94,8 @@ LitLens is an AI-powered research literature analysis platform that transforms a
 | Prisma | 7.5.0 | ORM & migrations |
 | `@prisma/adapter-pg` | 7.5.0 | PostgreSQL adapter |
 | `@google/generative-ai` | 0.24.1 | Gemini embeddings & LLM |
+| NextAuth | 5.0.0-beta.30 | Passwordless authentication |
+| Nodemailer | 7.0.13 | Magic-link email transport |
 | pg | 8.20.0 | PostgreSQL client |
 
 ### Python Microservice
@@ -151,8 +162,20 @@ Create a `.env.local` file in the project root. The following variables are requ
 |---|---|---|
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://litlens:litlens_password@localhost:5432/litlens` |
 | `GEMINI_API_KEY` | Google Gemini API key | `AIza...` |
+| `AUTH_SECRET` | Random string used to encrypt sessions | `openssl rand -hex 16` |
+| `NEXTAUTH_URL` | Canonical URL of your deployment | `http://localhost:3000` |
+| `EMAIL_SERVER` | SMTP connection string for magic-link emails | `smtp://user:pass@smtp.example.com:587` |
+| `EMAIL_FROM` | Sender address for magic-link emails | `LitLens <noreply@litlens.app>` |
 
-> **Note:** The default Docker Compose setup exposes PostgreSQL on `localhost:5432` with the credentials shown above. Change them in `docker-compose.yml` and your `.env.local` if needed.
+The following variables are optional:
+
+| Variable | Description | Default |
+|---|---|---|
+| `PYTHON_SERVICE_URL` | URL of the FastAPI microservice | `http://localhost:8000` |
+| `EMBEDDING_MODEL` | Gemini embedding model name | `gemini-embedding-001` |
+| `LLM_MODEL` | Primary Gemini LLM model | `gemini-2.5-flash-lite` |
+
+> **Note:** The default Docker Compose setup exposes PostgreSQL on `localhost:5432` with the credentials shown above. Change them in `docker-compose.yml` and your `.env.local` if needed. For local development without a real mail server, magic-link URLs are logged to the terminal.
 
 ---
 
@@ -222,161 +245,216 @@ uvicorn main:app --reload --port 8000
 
 ```
 litlens/
-├── app/                        # Next.js App Router
-│   ├── api/                    # API route handlers
+├── app/                            # Next.js App Router
+│   ├── api/                        # API route handlers
+│   │   ├── auth/[...nextauth]/     # NextAuth magic-link endpoints
 │   │   └── projects/
-│   │       ├── route.ts        # POST /api/projects (create project)
+│   │       ├── route.ts            # POST (create) · GET (list)
 │   │       └── [id]/
-│   │           ├── orient/     # GET  orientation analysis
-│   │           ├── ask/        # POST Q&A endpoint
-│   │           ├── gaps/       # GET  gap detection
-│   │           └── documents/  # GET/POST document management
-│   ├── new/                    # New project wizard
-│   ├── project/[id]/           # Per-project pages
-│   │   ├── page.tsx            # Overview
-│   │   ├── documents/          # Document list
-│   │   ├── gaps/               # Gap analysis
-│   │   └── ask/                # Q&A interface
-│   ├── layout.tsx              # Root layout
-│   ├── page.tsx                # Landing page
-│   └── globals.css             # Global styles
+│   │           ├── route.ts        # GET · PATCH · DELETE project
+│   │           ├── orient/         # POST trigger · GET cached orientation
+│   │           ├── ask/            # POST question · GET history
+│   │           ├── gaps/           # POST analyse · GET gaps
+│   │           │   └── [gapId]/    # PATCH toggle dismissed
+│   │           └── documents/      # POST upload · GET list
+│   │               └── [docId]/    # GET · PATCH · DELETE document
+│   ├── new/                        # New-project wizard (2-step)
+│   ├── project/[id]/               # Per-project pages
+│   │   ├── layout.tsx              # Sidebar + top bar + bottom tabs
+│   │   ├── page.tsx                # Orientation dashboard
+│   │   ├── ask/                    # Q&A interface
+│   │   ├── documents/              # Document manager
+│   │   └── gaps/                   # Gap detection
+│   ├── layout.tsx                  # Root layout (fonts, PWA meta, AuthProvider)
+│   ├── page.tsx                    # Landing page
+│   └── globals.css                 # Design tokens + global styles
 ├── components/
-│   ├── ui/                     # Shared UI components (header, logo, buttons)
-│   └── upload/                 # Upload wizard components
+│   ├── auth/                       # AuthContext, AuthGate, LoginModal, UserMenu
+│   ├── documents/                  # DocumentPanel (sliding detail viewer)
+│   ├── projects/                   # ProjectSwitcher dropdown
+│   ├── ui/                         # Buttons, header, logos, splash, stepper, SWRegister
+│   └── upload/                     # Dropzone, file-list, processing-screen
 ├── lib/
-│   ├── openai.ts               # Gemini API integration (embeddings + LLM)
-│   ├── chunker.ts              # Text-to-chunk splitting
-│   ├── prisma.ts               # Prisma client singleton
-│   └── stores/upload-store.ts  # Zustand upload state
+│   ├── auth.ts                     # NextAuth v5 config + project access helper
+│   ├── openai.ts                   # Gemini SDK (embeddings + LLM + fallback chain)
+│   ├── chunker.ts                  # Sliding-window text chunker
+│   ├── prisma.ts                   # Prisma client singleton
+│   └── stores/upload-store.ts      # Zustand upload state
+├── generated/prisma/               # Auto-generated Prisma client code
 ├── prisma/
-│   ├── schema.prisma           # Database schema
-│   └── migrations/             # SQL migration files
+│   ├── schema.prisma               # Database schema (pgvector)
+│   └── migrations/                 # SQL migration files
 ├── python-service/
-│   ├── main.py                 # FastAPI application
-│   ├── extractor.py            # PDF text extraction
-│   ├── clusterer.py            # K-means clustering
-│   ├── requirements.txt        # Python dependencies
-│   └── Dockerfile              # Container definition
-├── public/                     # Static assets
-├── docker-compose.yml          # Local dev orchestration
-├── next.config.ts              # Next.js configuration
-├── tsconfig.json               # TypeScript configuration
-└── package.json                # NPM manifest
+│   ├── main.py                     # FastAPI app (/extract, /cluster, /health)
+│   ├── extractor.py                # PDF text + metadata extraction
+│   ├── clusterer.py                # K-means with auto-k selection
+│   ├── requirements.txt            # Python dependencies
+│   └── Dockerfile                  # Container definition
+├── public/                         # PWA icons, manifest.json, sw.js
+├── docker-compose.yml              # PostgreSQL + Python service
+├── next.config.ts                  # Next.js configuration
+├── tsconfig.json                   # TypeScript configuration
+└── package.json                    # NPM manifest
 ```
 
 ---
 
 ## API Reference
 
-All API routes are under `/api/projects`.
+All API routes sit under `/api`. Authentication endpoints are handled automatically by NextAuth. Project endpoints are under `/api/projects`.
+
+### Authentication
+
+| Method | Path | Description |
+|---|---|---|
+| `GET/POST` | `/api/auth/*` | NextAuth magic-link sign-in, callback, sign-out (handled automatically) |
+
+---
 
 ### Projects
 
 #### `POST /api/projects`
-Create a new project.
+Create a new project. Title is auto-generated from the research question via Gemini if not provided.
 
 **Request body**
 ```json
 {
-  "researchQuestion": "string",
-  "scopeContext": "string (optional)",
+  "research_question": "string",
+  "scope_context": "string (optional)",
   "methodology": "string (optional)",
-  "knownCoverage": "string (optional)"
+  "known_coverage": "string (optional)"
 }
 ```
 
 **Response** — `201 Created`
 ```json
-{
-  "id": "uuid",
-  "researchQuestion": "string",
-  "createdAt": "ISO 8601 timestamp"
-}
+{ "id": "uuid", "title": "string", "research_question": "string", "created_at": "ISO 8601" }
 ```
+
+#### `GET /api/projects`
+List all projects for the authenticated user. Returns name, research question, file count, and timestamps.
+
+#### `GET /api/projects/:id`
+Fetch full project details including documents, clusters, and chunk count.
+
+#### `PATCH /api/projects/:id`
+Rename a project.
+
+**Request body**
+```json
+{ "title": "string" }
+```
+
+#### `DELETE /api/projects/:id`
+Delete a project and all associated data (documents, chunks, clusters, gaps, Q&A history).
 
 ---
 
 ### Documents
 
 #### `POST /api/projects/:id/documents`
-Upload one or more PDF files and trigger extraction, chunking, and embedding.
+Upload a single PDF. Triggers extraction → chunking → embedding pipeline.
 
-**Request** — `multipart/form-data` with one or more `file` fields.
+**Request** — `multipart/form-data` with a `file` field (PDF only).
 
 **Response** — `201 Created`
 ```json
-[
-  { "id": "uuid", "filename": "paper.pdf", "title": "string", "authors": "string", "year": 2024 }
-]
+{ "id": "uuid", "project_id": "uuid", "filename": "paper.pdf", "title": "string", "authors": "string", "year": 2024, "chunk_count": 42, "created_at": "ISO 8601" }
 ```
 
+Returns `207 Multi-Status` if the document is saved but embedding fails (document is visible but not searchable until re-embedded).
+
 #### `GET /api/projects/:id/documents`
-List all documents in a project.
+List all documents in a project with metadata and chunk counts.
+
+#### `GET /api/projects/:id/documents/:docId`
+Fetch a single document with all its text chunks.
+
+#### `PATCH /api/projects/:id/documents/:docId`
+Update a document's title or relevance tag.
+
+**Request body**
+```json
+{ "title": "string (optional)", "tag": "string (optional)" }
+```
+
+#### `DELETE /api/projects/:id/documents/:docId`
+Remove a document and its chunks from the project.
 
 ---
 
 ### Orientation
 
-#### `GET /api/projects/:id/orient`
-Analyse how well the uploaded library aligns with the project's research question. Runs clustering if not already done, then calls the LLM for a holistic assessment.
+#### `POST /api/projects/:id/orient`
+Run the full orientation pipeline: cluster embeddings via K-means → label clusters with Gemini → compute alignment score → generate library summary. Long-running (up to 300 s).
 
 **Response** — `200 OK`
 ```json
 {
-  "alignmentScore": 82,
-  "librarySummary": "string",
-  "strongCoverage": "string",
-  "notableGaps": "string",
+  "alignment_score": 82,
+  "library_summary": "string",
+  "strong_coverage": ["topic A", "topic B"],
+  "notable_gaps": ["topic C"],
   "clusters": [
-    { "id": "uuid", "label": "string", "summary": "string", "chunkCount": 42 }
+    { "cluster_index": 0, "label": "string", "summary": "string", "doc_count": 5, "doc_names": ["paper.pdf"] }
   ]
 }
 ```
+
+#### `GET /api/projects/:id/orient`
+Fetch the cached orientation results (clusters, alignment score, coverage breakdown) without re-running the analysis.
 
 ---
 
 ### Q&A
 
 #### `POST /api/projects/:id/ask`
-Answer a free-form question using semantic search over the project's chunks.
+Ask a free-form question. Embeds the question, runs cosine-similarity search over chunk vectors (top 8), and generates a grounded answer via Gemini.
 
 **Request body**
 ```json
-{ "question": "string" }
+{ "question": "string (min 3 characters)" }
 ```
 
 **Response** — `200 OK`
 ```json
 {
+  "id": "uuid",
+  "question": "string",
   "answer": "string",
+  "created_at": "ISO 8601",
   "sources": [
-    {
-      "passage": "string",
-      "relevanceScore": 0.92,
-      "document": { "id": "uuid", "title": "string", "authors": "string" }
-    }
+    { "id": "uuid", "passage": "string", "document_filename": "string", "document_title": "string", "relevance_score": 0.92, "relevance": "High" }
   ]
 }
 ```
+
+Relevance tiers: **High** (> 0.5), **Medium** (0.3–0.5), **Low** (< 0.3).
+
+#### `GET /api/projects/:id/ask`
+Fetch the full Q&A history for a project, including stored source passages.
 
 ---
 
 ### Gap Detection
 
-#### `GET /api/projects/:id/gaps`
-Identify topics underrepresented in the literature relative to the research question.
+#### `POST /api/projects/:id/gaps`
+Run gap analysis. Sends cluster summaries and the research question to Gemini, which identifies 3–6 underrepresented topics with priorities and suggested search terms.
 
 **Response** — `200 OK`
 ```json
-[
-  {
-    "id": "uuid",
-    "topic": "string",
-    "explanation": "string",
-    "suggestedTerms": "string"
-  }
-]
+{
+  "gaps": [
+    { "id": "uuid", "title": "string", "priority": "HIGH", "description": "string", "searchTerms": ["term1", "term2"], "addressed": false }
+  ]
+}
 ```
+
+#### `GET /api/projects/:id/gaps`
+Fetch stored gaps and a coverage breakdown (percentage per cluster, visualised as a bar chart on the frontend).
+
+#### `PATCH /api/projects/:id/gaps/:gapId`
+Toggle a gap's dismissed/addressed status.
 
 ---
 
@@ -401,6 +479,10 @@ Project ──< Document ──< Chunk >──< ChunkCluster >── Cluster
 | `gaps` | Missing topics identified by the LLM relative to the research question. |
 | `qa_sessions` | Q&A exchanges (question + answer pairs). |
 | `qa_sources` | Supporting passages with relevance scores, linked to sessions and chunks. |
+| `users` | Authenticated users (NextAuth). |
+| `accounts` | OAuth/email provider credentials (NextAuth). |
+| `sessions` | Active user sessions (NextAuth). |
+| `verification_tokens` | Magic-link email verification tokens (NextAuth). |
 
 ---
 
@@ -423,4 +505,4 @@ Contributions are welcome! Please follow these steps:
 
 ## License
 
-This project is released under the [MIT License](LICENSE).
+Copyright (c) 2026 Earl Lawrence Bacsain. All rights reserved. See [LICENSE](LICENSE.md) for details.

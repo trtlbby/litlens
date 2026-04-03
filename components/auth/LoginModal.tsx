@@ -60,7 +60,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
             <p className="mb-6" style={{ fontSize: "14px", color: "#6B6B78", lineHeight: 1.5 }}>
               We sent a magic login link to <strong>{email}</strong>. Click the link in that email to securely log in.
               <br/><br/>
-              <em>(If you are running this locally, check your terminal for the magic link.)</em>
+              {/* <em>(If you are running this locally, check your terminal for the magic link.)</em> */}
             </p>
             <button
                onClick={onClose}
