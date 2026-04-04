@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { X, Eye, EyeOff } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { X, Eye, EyeOff, FolderOpen } from "lucide-react";
 import { useAuth } from "./AuthContext";
 
 interface LoginModalProps {
@@ -19,7 +20,8 @@ const focusStyle = "1px solid #1F5C45";
 const blurStyle = "1px solid #E4E2DC";
 
 export function LoginModal({ isOpen, onClose }: LoginModalProps) {
-  const { login, register } = useAuth();
+  const { login, register, refreshProjects } = useAuth();
+  const router = useRouter();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,6 +33,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [postAuth, setPostAuth] = useState<"checking" | "no-projects" | null>(null);
 
   if (!isOpen) return null;
 
@@ -51,6 +54,27 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
     resetForm();
   };
 
+  const handlePostAuthRedirect = async () => {
+    setPostAuth("checking");
+    try {
+      await refreshProjects();
+      const res = await fetch("/api/projects", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        resetForm();
+        onClose();
+        router.push(`/project/${data[0].id}`);
+      } else {
+        setPostAuth("no-projects");
+      }
+    } catch {
+      setPostAuth("no-projects");
+    }
+  };
+
   const handleSignIn = async () => {
     if (!email || !password) {
       setError("Please enter your email and password");
@@ -61,8 +85,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
     const res = await login(email, password);
     setLoading(false);
     if (res.ok) {
-      resetForm();
-      onClose();
+      await handlePostAuthRedirect();
     } else {
       setError(res.error || "Sign in failed");
     }
@@ -93,8 +116,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
     });
     setLoading(false);
     if (res.ok) {
-      resetForm();
-      onClose();
+      await handlePostAuthRedirect();
     } else {
       setError(res.error || "Registration failed");
     }
@@ -112,7 +134,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
       className="fixed inset-0 z-50 flex items-center justify-center"
       style={{ backgroundColor: "rgba(31, 28, 24, 0.45)" }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget && !postAuth) onClose();
       }}
     >
       <div
@@ -123,16 +145,70 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
           boxShadow: "0 24px 64px rgba(31,28,24,0.14)",
         }}
       >
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 transition-colors"
-          style={{ color: "#6B6B78" }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#1C1C1E")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "#6B6B78")}
-        >
-          <X size={18} />
-        </button>
+        {!postAuth && (
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 transition-colors"
+            style={{ color: "#6B6B78" }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#1C1C1E")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "#6B6B78")}
+          >
+            <X size={18} />
+          </button>
+        )}
 
+        {postAuth === "checking" && (
+          <div className="flex flex-col items-center justify-center py-16">
+            <div
+              className="w-8 h-8 border-[3px] rounded-full animate-spin mb-4"
+              style={{ borderColor: "#E4E2DC", borderTopColor: "#1F5C45" }}
+            />
+            <p style={{ color: "#6B6B78", fontSize: "14px" }}>Checking your projects...</p>
+          </div>
+        )}
+
+        {postAuth === "no-projects" && (
+          <div className="flex flex-col items-center justify-center py-10">
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center mb-4"
+              style={{ backgroundColor: "#F7F5F0" }}
+            >
+              <FolderOpen size={24} style={{ color: "#1F5C45" }} />
+            </div>
+            <h2 className="text-center mb-1" style={{ color: "#1C1C1E", fontSize: "20px", fontWeight: 600 }}>
+              No projects yet
+            </h2>
+            <p className="text-center mb-6" style={{ fontSize: "14px", color: "#6B6B78" }}>
+              You don&apos;t have any projects. Create one to get started!
+            </p>
+            <button
+              onClick={() => {
+                resetForm();
+                setPostAuth(null);
+                onClose();
+                router.push("/new");
+              }}
+              className="w-full py-3 rounded-lg text-white transition-opacity hover:opacity-90 mb-3"
+              style={{ backgroundColor: "#1F5C45", fontSize: "15px", fontWeight: 500 }}
+            >
+              Create Your First Project
+            </button>
+            <button
+              onClick={() => {
+                resetForm();
+                setPostAuth(null);
+                onClose();
+              }}
+              className="w-full py-3 rounded-lg transition-colors"
+              style={{ color: "#6B6B78", fontSize: "14px" }}
+            >
+              Stay on this page
+            </button>
+          </div>
+        )}
+
+        {!postAuth && (
+          <>
         <h2 className="text-center mb-1" style={{ color: "#1C1C1E", fontSize: "22px" }}>
           {mode === "signin" ? "Welcome back" : "Create your account"}
         </h2>
@@ -331,6 +407,8 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
             ? mode === "signin" ? "Signing in..." : "Creating account..."
             : mode === "signin" ? "Sign In" : "Create Account"}
         </button>
+          </>
+        )}
       </div>
     </div>
   );
