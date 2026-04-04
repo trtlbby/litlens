@@ -15,7 +15,7 @@ const MAX_FILES = 20;
 
 export default function NewProjectPage() {
     const router = useRouter();
-    const { refreshProjects, setActiveProjectId } = useAuth();
+    const { refreshProjects, setActiveProjectId, isLoggedIn } = useAuth();
     const {
         researchQuestion,
         setResearchQuestion,
@@ -92,6 +92,17 @@ export default function NewProjectPage() {
 
             const project = await projectRes.json();
             setProjectId(project.id);
+
+            // Track anonymous project so it can be claimed after login
+            if (!isLoggedIn) {
+                try {
+                    const stored = JSON.parse(localStorage.getItem("litlens_anon_projects") || "[]");
+                    if (!stored.includes(project.id)) {
+                        stored.push(project.id);
+                        localStorage.setItem("litlens_anon_projects", JSON.stringify(stored));
+                    }
+                } catch { /* localStorage unavailable */ }
+            }
 
             // 2. Upload PDFs one at a time
             setProcessing(true, 0, "Extracting text from PDFs...");
@@ -333,6 +344,7 @@ export default function NewProjectPage() {
                     />
                 </main>
             )}
+
         </div>
     );
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateText } from "@/lib/openai";
-import { verifyProjectAccess } from "@/lib/auth";
+import { verifyProjectAccess, auth } from "@/lib/auth";
 
 export const maxDuration = 60;
 
@@ -19,6 +19,12 @@ export async function POST(
 ) {
   try {
     const { id: projectId } = await params;
+
+    // Gap analysis requires authentication
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: { message: "Sign in to access gap analysis" } }, { status: 401 });
+    }
 
     const pAccess = await prisma.project.findUnique({ where: { id: projectId }, select: { userId: true } });
     if (!pAccess) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -181,6 +187,12 @@ export async function GET(
 ) {
   try {
     const { id: projectId } = await params;
+
+    // Gap data requires authentication
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: { message: "Sign in to access gap analysis" } }, { status: 401 });
+    }
 
     const pAccess = await prisma.project.findUnique({ where: { id: projectId }, select: { userId: true } });
     if (!pAccess) return NextResponse.json({ error: "Not found" }, { status: 404 });

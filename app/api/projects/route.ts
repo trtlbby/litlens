@@ -9,9 +9,7 @@ import { generateText } from "@/lib/openai";
 export async function POST(request: NextRequest) {
     try {
         const session = await auth();
-        if (!session?.user?.id) {
-            return NextResponse.json({ error: { message: "Unauthorized" } }, { status: 401 });
-        }
+        const userId = session?.user?.id || null;
 
         const body = await request.json().catch(() => ({}));
 
@@ -30,7 +28,7 @@ export async function POST(request: NextRequest) {
 
         const project = await prisma.project.create({
             data: {
-                userId: session.user.id,
+                userId: userId,
                 title: calculatedTitle,
                 researchQuestion: body.research_question || null,
                 scopeContext: body.scope_context || null,

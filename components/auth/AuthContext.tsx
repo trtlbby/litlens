@@ -73,9 +73,28 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Claim anonymous projects and then refresh the project list
+  const claimAndRefresh = useCallback(async () => {
+    try {
+      const raw = localStorage.getItem("litlens_anon_projects");
+      const anonIds: string[] = raw ? JSON.parse(raw) : [];
+      if (anonIds.length > 0) {
+        await fetch("/api/projects/claim", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectIds: anonIds }),
+        });
+        localStorage.removeItem("litlens_anon_projects");
+      }
+    } catch {
+      // claim failed — non-critical, projects remain anonymous
+    }
+    await refreshProjects();
+  }, [refreshProjects]);
+
   useEffect(() => {
     if (status === "authenticated") {
-      refreshProjects();
+      claimAndRefresh();
     } else if (status === "unauthenticated") {
       setProjects([]);
       setActiveProjectId(null);
