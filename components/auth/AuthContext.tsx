@@ -21,7 +21,8 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   isLoggedIn: boolean;
-  login: (email: string) => void;
+  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  register: (data: { firstName: string; lastName: string; email: string; password: string; bio?: string; institution?: string }) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
   projects: Project[];
   activeProjectId: string | null;
@@ -108,8 +109,30 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     }
   }, [activeProjectId]);
 
-  const login = useCallback((email: string) => {
-    signIn("nodemailer", { email, redirect: false });
+  const login = useCallback(async (email: string, password: string) => {
+    const res = await signIn("credentials", { email, password, redirect: false });
+    if (res?.error) return { ok: false, error: "Invalid email or password" };
+    return { ok: true };
+  }, []);
+
+  const register = useCallback(async (data: { firstName: string; lastName: string; email: string; password: string; bio?: string; institution?: string }) => {
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return { ok: false, error: body?.error?.message || "Registration failed" };
+      }
+      // Auto-login after successful registration
+      const loginRes = await signIn("credentials", { email: data.email, password: data.password, redirect: false });
+      if (loginRes?.error) return { ok: false, error: "Account created but login failed. Please sign in manually." };
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "Registration failed" };
+    }
   }, []);
 
   const logout = useCallback(() => {
@@ -163,6 +186,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
         user,
         isLoggedIn: status === "authenticated",
         login,
+        register,
         logout,
         projects,
         activeProjectId,
