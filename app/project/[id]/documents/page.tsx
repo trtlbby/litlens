@@ -274,7 +274,7 @@ export default function DocumentsPage({
                   >
                     {i + 1}
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0 overflow-hidden">
                     {expandedId === doc.id ? (
                       <ChevronDown
                         size={14}

@@ -159,7 +159,7 @@ export default function GapsPage({
     <AuthGate featureName="Gap Detection">
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
           <h2
             style={{ fontFamily: "var(--font-heading)" }}
@@ -178,7 +178,7 @@ export default function GapsPage({
         <button
           onClick={runAnalysis}
           disabled={analyzing}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#1F5C45] text-white hover:bg-[#174D39] disabled:opacity-50 transition-colors cursor-pointer flex-shrink-0"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#1F5C45] text-white hover:bg-[#174D39] disabled:opacity-50 transition-colors cursor-pointer w-full sm:w-auto flex-shrink-0"
           style={{ fontSize: "14px" }}
         >
           {analyzing ? (

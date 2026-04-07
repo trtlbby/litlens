@@ -119,35 +119,6 @@ export default function AskPage({
   return (
     <AuthGate featureName="Ask Your Library">
       <div className="flex flex-col h-[calc(100vh-72px)]">
-        {/* Sticky Query Bar */}
-        <div className="sticky top-0 z-10 bg-[#F7F5F0] pb-4">
-          <div className="flex items-center gap-2 bg-white border border-[#E4E2DC] rounded-lg overflow-hidden">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-              placeholder="Ask anything about your literature…"
-              disabled={loading}
-              className="flex-1 h-[56px] px-5 bg-transparent focus:outline-none disabled:opacity-50"
-              style={{ fontSize: "15px" }}
-            />
-            <button
-              onClick={() => handleSubmit()}
-              disabled={!query.trim() || loading}
-              className="w-[48px] h-[48px] mr-1 rounded-md bg-[#1F5C45] text-white flex items-center justify-center cursor-pointer hover:bg-[#174D39] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-            >
-              {loading ? (
-                <Loader2 size={20} className="animate-spin" />
-              ) : (
-                <ArrowUp size={20} />
-              )}
-            </button>
-          </div>
-          {error && (
-            <p className="text-[#C0392B] text-sm mt-2">{error}</p>
-          )}
-        </div>
-
         {/* Content */}
         <div className="flex-1 overflow-y-auto" ref={scrollRef}>
           {!historyLoaded ? (
@@ -208,6 +179,35 @@ export default function AskPage({
               )}
             </div>
           )}
+        </div>
+
+        {/* Query Bar — Bottom */}
+        <div className="sticky bottom-0 z-10 bg-[#F7F5F0] pt-4 pb-4 md:pb-0">
+          {error && (
+            <p className="text-[#C0392B] text-sm mb-2">{error}</p>
+          )}
+          <div className="flex items-center gap-2 bg-white border border-[#E4E2DC] rounded-lg overflow-hidden">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+              placeholder="Ask anything about your literature…"
+              disabled={loading}
+              className="flex-1 h-[56px] px-5 bg-transparent focus:outline-none disabled:opacity-50"
+              style={{ fontSize: "15px" }}
+            />
+            <button
+              onClick={() => handleSubmit()}
+              disabled={!query.trim() || loading}
+              className="w-[48px] h-[48px] mr-1 rounded-md bg-[#1F5C45] text-white flex items-center justify-center cursor-pointer hover:bg-[#174D39] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+            >
+              {loading ? (
+                <Loader2 size={20} className="animate-spin" />
+              ) : (
+                <ArrowUp size={20} />
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </AuthGate>

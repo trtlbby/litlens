@@ -153,43 +153,75 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {mobileNavOpen && (
           <div className="md:hidden fixed inset-0 z-50 bg-black/30" onClick={() => setMobileNavOpen(false)}>
             <aside
-              className="w-[260px] bg-white h-full py-4 shadow-lg"
+              className="w-[260px] bg-white h-full py-4 shadow-lg flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="px-5 mb-4">
                 <LitLensLogo />
               </div>
-              <div className="mb-4">
-                <ProjectSwitcher />
+
+              <div className="px-4 mb-2">
+                <span style={{ fontSize: "11px", color: "#6B6B78", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                  Your Projects ({projects.length}/{5})
+                </span>
               </div>
-              <div className="mx-3 mb-2 h-px bg-[#E4E2DC]" />
-              <nav className="flex flex-col gap-1 px-3">
-                {navItems.map((item) => {
-                  const isActive = isActiveProp(item);
-                  return (
-                    <Link
-                      key={item.to}
-                      href={item.to}
-                      onClick={(e) => {
-                        handleNavClick(item, e);
-                        if (!item.requiresAuth || isLoggedIn) setMobileNavOpen(false);
-                      }}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-md transition-colors ${
-                        item.requiresAuth && !isLoggedIn
-                          ? "text-[#B0B0B8] cursor-pointer"
-                          : isActive
-                          ? "bg-[#EBF2EE] text-[#1F5C45] border-l-3 border-[#1F5C45]"
-                          : "text-[#6B6B78] hover:bg-[#F7F5F0] hover:text-[#1C1C1E]"
-                      }`}
-                      style={{ fontSize: "14px" }}
-                    >
-                      <item.icon size={20} />
-                      <span className="flex-1">{item.label}</span>
-                      {item.requiresAuth && !isLoggedIn && <Lock size={13} className="text-[#B0B0B8]" />}
-                    </Link>
-                  );
-                })}
-              </nav>
+
+              <div className="flex-1 overflow-y-auto px-3">
+                {projects.length === 0 ? (
+                  <p className="px-4 py-6 text-center text-[#6B6B78]" style={{ fontSize: "13px" }}>
+                    No projects yet
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-0.5">
+                    {projects.map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => {
+                          setMobileNavOpen(false);
+                          router.push(`/project/${p.id}`);
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-md transition-colors text-left cursor-pointer ${
+                          p.id === projectId
+                            ? "bg-[#EBF2EE] text-[#1F5C45]"
+                            : "text-[#6B6B78] hover:bg-[#F7F5F0] hover:text-[#1C1C1E]"
+                        }`}
+                      >
+                        <FolderOpen size={16} className="flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className="truncate"
+                            style={{
+                              fontSize: "13px",
+                              fontWeight: p.id === projectId ? 600 : 400,
+                            }}
+                          >
+                            {p.name}
+                          </p>
+                          <p className="truncate" style={{ fontSize: "11px", color: "#6B6B78" }}>
+                            {p.fileCount} files
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {canCreateProject && (
+                <div className="px-3 pt-2 mt-auto" style={{ borderTop: "1px solid #E4E2DC" }}>
+                  <button
+                    onClick={() => {
+                      setMobileNavOpen(false);
+                      router.push("/new");
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-3 rounded-md text-[#1F5C45] hover:bg-[#F7F5F0] transition-colors cursor-pointer"
+                    style={{ fontSize: "13px" }}
+                  >
+                    <Plus size={14} />
+                    <span>New Project</span>
+                  </button>
+                </div>
+              )}
             </aside>
           </div>
         )}
