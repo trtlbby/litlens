@@ -40,7 +40,7 @@ export function UserMenu() {
 
       {open && (
         <div
-          className="absolute right-0 top-[calc(100%+8px)] w-[260px] max-w-[calc(100vw-2rem)] rounded-lg overflow-hidden z-50"
+          className="fixed md:absolute right-4 md:right-0 top-[60px] md:top-[calc(100%+8px)] w-[calc(100vw-2rem)] md:w-[260px] max-w-[260px] rounded-lg overflow-hidden z-50"
           style={{
             backgroundColor: "white",
             border: "1px solid #E4E2DC",
