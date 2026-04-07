@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, useCallback, use } from "react";
 import { Button } from "@/components/ui/buttons";
 import {
   Eye,
@@ -8,9 +8,11 @@ import {
   ChevronDown,
   ChevronRight,
   Upload,
+  X,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 
+import Dropzone from "@/components/upload/dropzone";
+import FileList from "@/components/upload/file-list";
 import { DocumentPanel } from "@/components/documents/DocumentPanel";
 import { AuthGate } from "@/components/auth/AuthGate";
 
@@ -33,13 +35,18 @@ export default function DocumentsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id: projectId } = use(params);
-  const router = useRouter();
   const [docs, setDocs] = useState<DocItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [viewDocId, setViewDocId] = useState<string | null>(null);
   const [error, setError] = useState("");
+
+  // Upload state
+  const [showUpload, setShowUpload] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<{ file: File; id: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
 
   const fetchDocuments = async () => {
     try {
@@ -61,6 +68,60 @@ export default function DocumentsPage({
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
+  };
+
+  // Upload handlers
+  const handleFilesAdded = useCallback((files: File[]) => {
+    const newEntries = files.map((f) => ({ file: f, id: crypto.randomUUID() }));
+    setPendingFiles((prev) => [...prev, ...newEntries]);
+  }, []);
+
+  const handleRemoveFile = useCallback((id: string) => {
+    setPendingFiles((prev) => prev.filter((f) => f.id !== id));
+  }, []);
+
+  const handleUploadFiles = async () => {
+    if (pendingFiles.length === 0) return;
+    setUploading(true);
+    setError("");
+    let successCount = 0;
+
+    for (let i = 0; i < pendingFiles.length; i++) {
+      const f = pendingFiles[i];
+      setUploadProgress(`Processing ${f.file.name} (${i + 1}/${pendingFiles.length})...`);
+      try {
+        const formData = new FormData();
+        formData.append("file", f.file);
+        const res = await fetch(`/api/projects/${projectId}/documents`, {
+          method: "POST",
+          body: formData,
+        });
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => null);
+          throw new Error(errBody?.error?.message || "Upload failed");
+        }
+        successCount++;
+      } catch (err) {
+        setError((prev) =>
+          prev + (prev ? "\n" : "") + `${f.file.name}: ${err instanceof Error ? err.message : "Upload failed"}`
+        );
+      }
+    }
+
+    if (successCount > 0) {
+      setUploadProgress("Updating orientation analysis...");
+      try {
+        await fetch(`/api/projects/${projectId}/orient`, { method: "POST" });
+      } catch {
+        // Non-fatal
+      }
+      await fetchDocuments();
+    }
+
+    setUploading(false);
+    setUploadProgress("");
+    setPendingFiles([]);
+    setShowUpload(false);
   };
 
   const handleDelete = async (id: string) => {
@@ -100,23 +161,80 @@ export default function DocumentsPage({
               {docs.length} document{docs.length !== 1 ? "s" : ""} uploaded
             </p>
           </div>
-          <Button variant="ghost" onClick={() => router.push("/new")}>
+          <Button variant="ghost" onClick={() => setShowUpload(true)}>
             <Upload size={16} /> Add More Documents
           </Button>
         </div>
 
-        {error && (
-          <p className="text-[#C0392B] text-sm">{error}</p>
+        {/* Inline Upload Section */}
+        {showUpload && (
+          <div className="bg-white border border-[#E4E2DC] rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[#1C1C1E] font-semibold" style={{ fontSize: "16px" }}>
+                Upload Documents
+              </h3>
+              {!uploading && (
+                <button
+                  onClick={() => {
+                    setShowUpload(false);
+                    setPendingFiles([]);
+                    setError("");
+                  }}
+                  className="text-[#6B6B78] hover:text-[#1C1C1E] transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              )}
+            </div>
+
+            {uploading ? (
+              <div className="flex flex-col items-center py-8">
+                <div
+                  className="w-8 h-8 border-[3px] rounded-full animate-spin mb-4"
+                  style={{ borderColor: "#E4E2DC", borderTopColor: "#1F5C45" }}
+                />
+                <p className="text-sm" style={{ color: "#6B6B78" }}>
+                  {uploadProgress}
+                </p>
+              </div>
+            ) : (
+              <>
+                <Dropzone
+                  onFilesAdded={handleFilesAdded}
+                  maxFiles={20}
+                  currentCount={docs.length + pendingFiles.length}
+                />
+                {pendingFiles.length > 0 && (
+                  <div className="mt-4">
+                    <FileList
+                      files={pendingFiles}
+                      onRemove={handleRemoveFile}
+                      maxFiles={20}
+                    />
+                    <Button className="mt-4 w-full" onClick={handleUploadFiles}>
+                      <Upload size={16} /> Upload &amp; Process{" "}
+                      {pendingFiles.length} file
+                      {pendingFiles.length !== 1 ? "s" : ""}
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         )}
 
-        {docs.length === 0 ? (
+        {error && (
+          <p className="text-[#C0392B] text-sm whitespace-pre-line">{error}</p>
+        )}
+
+        {docs.length === 0 && !showUpload ? (
           <div className="bg-white border border-[#E4E2DC] rounded-lg p-12 text-center">
             <p className="text-[#6B6B78]" style={{ fontSize: "15px" }}>
               No documents uploaded yet.
             </p>
             <Button
               className="mt-4"
-              onClick={() => router.push("/new")}
+              onClick={() => setShowUpload(true)}
             >
               Upload Documents
             </Button>

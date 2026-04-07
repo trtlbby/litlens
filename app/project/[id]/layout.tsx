@@ -47,8 +47,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-[#F7F5F0] flex flex-col">
       {/* Top Bar */}
-      <header className="bg-white border-b border-[#E4E2DC] px-4 md:px-8 py-3 grid grid-cols-[auto,1fr,auto] items-center gap-3 flex-shrink-0">
-        <div className="flex items-center gap-3">
+      <header className="bg-white border-b border-[#E4E2DC] px-4 md:px-8 py-3 flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-3 flex-shrink-0">
           <button
             className="md:hidden p-2 cursor-pointer rounded-md hover:bg-[#F0EDE6]"
             onClick={() => setMobileNavOpen(!mobileNavOpen)}
@@ -60,10 +60,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <LitLensLogo />
           </div>
         </div>
-        <p className="text-[#1C1C1E] truncate text-sm md:text-base font-semibold text-center md:text-left" style={{ fontFamily: "var(--font-heading)" }}>
+        <p className="text-[#1C1C1E] truncate text-sm md:text-base font-semibold flex-1 min-w-0" style={{ fontFamily: "var(--font-heading)" }}>
           {currentProject?.name ?? "Getting your project..."}
         </p>
-        <div className="flex items-center justify-end gap-2 md:gap-3">
+        <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
           {isLoggedIn ? (
             <>
               {canCreateProject && (
