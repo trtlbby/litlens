@@ -47,7 +47,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-[#F7F5F0] flex flex-col">
       {/* Top Bar */}
-      <header className="bg-white border-b border-[#E4E2DC] px-4 md:px-8 py-3 flex items-center gap-3 flex-shrink-0">
+      <header className="sticky top-0 z-30 bg-white border-b border-[#E4E2DC] px-4 md:px-8 py-3 flex items-center gap-3 flex-shrink-0">
         <div className="flex items-center gap-3 flex-shrink-0">
           <button
             className="md:hidden p-2 cursor-pointer rounded-md hover:bg-[#F0EDE6]"
@@ -112,9 +112,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0">
         {/* Sidebar - Desktop */}
-        <aside className="hidden md:flex flex-col w-[240px] bg-white border-r border-[#E4E2DC] py-4 flex-shrink-0">
+        <aside className="hidden md:flex flex-col w-[240px] bg-white border-r border-[#E4E2DC] py-4 flex-shrink-0 sticky top-[57px] h-[calc(100vh-57px)] overflow-y-auto">
           <div className="mb-4">
             <ProjectSwitcher />
           </div>
@@ -227,7 +227,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto p-5 md:p-8 pb-24 md:pb-8">
+        <main className="flex-1 overflow-y-auto p-5 md:p-8 pb-24 md:pb-8 min-h-0">
           <div className="max-w-[1040px] mx-auto">
             {children}
           </div>

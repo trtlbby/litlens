@@ -119,96 +119,128 @@ export default function AskPage({
   return (
     <AuthGate featureName="Ask Your Library">
       <div className="flex flex-col h-[calc(100vh-72px)]">
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto" ref={scrollRef}>
-          {!historyLoaded ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="w-8 h-8 border-2 border-[#1F5C45] border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : exchanges.length === 0 ? (
-            /* Empty State */
-            <div className="flex flex-col items-center justify-center py-20">
-              <div className="w-16 h-16 rounded-full bg-[#EBF2EE] flex items-center justify-center mb-6">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-4H7l5-7v4h4l-5 7z"
-                    fill="#1F5C45"
-                  />
-                </svg>
-              </div>
-              <h3
-                className="text-[#1C1C1E] mb-2"
-                style={{ fontFamily: "var(--font-heading)" }}
-              >
-                Ask your library anything
-              </h3>
-              <p
-                className="text-[#6B6B78] mb-6 text-center max-w-[400px]"
-                style={{ fontSize: "14px", lineHeight: 1.5 }}
-              >
-                Get answers grounded in your uploaded documents, with cited
-                passages you can verify.
-              </p>
-              <div className="flex flex-wrap gap-2 justify-center">
-                {suggestedQuestions.map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => handleSubmit(q)}
-                    disabled={loading}
-                    className="px-4 py-2.5 rounded-full border border-[#E4E2DC] bg-white text-[#1C1C1E] hover:border-[#1F5C45] hover:bg-[#EBF2EE] transition-colors cursor-pointer disabled:opacity-50"
-                    style={{ fontSize: "13px" }}
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            /* Q&A Exchanges */
-            <div className="space-y-6 pb-8">
-              {exchanges.map((exchange) => (
-                <ExchangeBlock key={exchange.id} exchange={exchange} />
-              ))}
-              {loading && (
-                <div className="flex items-center gap-3 text-[#6B6B78] pl-2">
-                  <Loader2 size={16} className="animate-spin" />
-                  <span style={{ fontSize: "14px" }}>
-                    Searching your library and composing an answer…
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Query Bar — Bottom */}
-        <div className="sticky bottom-0 z-10 bg-[#F7F5F0] pt-4 pb-4 md:pb-0">
-          {error && (
-            <p className="text-[#C0392B] text-sm mb-2">{error}</p>
-          )}
-          <div className="flex items-center gap-2 bg-white border border-[#E4E2DC] rounded-lg overflow-hidden">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-              placeholder="Ask anything about your literature…"
-              disabled={loading}
-              className="flex-1 h-[56px] px-5 bg-transparent focus:outline-none disabled:opacity-50"
-              style={{ fontSize: "15px" }}
-            />
-            <button
-              onClick={() => handleSubmit()}
-              disabled={!query.trim() || loading}
-              className="w-[48px] h-[48px] mr-1 rounded-md bg-[#1F5C45] text-white flex items-center justify-center cursor-pointer hover:bg-[#174D39] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-            >
-              {loading ? (
-                <Loader2 size={20} className="animate-spin" />
-              ) : (
-                <ArrowUp size={20} />
-              )}
-            </button>
+        {!historyLoaded ? (
+          <div className="flex items-center justify-center flex-1">
+            <div className="w-8 h-8 border-2 border-[#1F5C45] border-t-transparent rounded-full animate-spin" />
           </div>
-        </div>
+        ) : exchanges.length === 0 ? (
+          /* ─── Empty State: centered input ─── */
+          <div className="flex flex-col items-center justify-center flex-1 px-4">
+            <div className="w-16 h-16 rounded-full bg-[#EBF2EE] flex items-center justify-center mb-6">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-4H7l5-7v4h4l-5 7z"
+                  fill="#1F5C45"
+                />
+              </svg>
+            </div>
+            <h3
+              className="text-[#1C1C1E] mb-2"
+              style={{ fontFamily: "var(--font-heading)" }}
+            >
+              Ask your library anything
+            </h3>
+            <p
+              className="text-[#6B6B78] mb-6 text-center max-w-[400px]"
+              style={{ fontSize: "14px", lineHeight: 1.5 }}
+            >
+              Get answers grounded in your uploaded documents, with cited
+              passages you can verify.
+            </p>
+
+            {/* Input bar — centered */}
+            <div className="w-full max-w-[640px] mb-6">
+              <div className="flex items-center gap-2 bg-white border border-[#E4E2DC] rounded-lg overflow-hidden shadow-sm">
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                  placeholder="Ask anything about your literature…"
+                  disabled={loading}
+                  className="flex-1 h-[56px] px-5 bg-transparent focus:outline-none disabled:opacity-50"
+                  style={{ fontSize: "15px" }}
+                />
+                <button
+                  onClick={() => handleSubmit()}
+                  disabled={!query.trim() || loading}
+                  className="w-[48px] h-[48px] mr-1 rounded-md bg-[#1F5C45] text-white flex items-center justify-center cursor-pointer hover:bg-[#174D39] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                >
+                  {loading ? (
+                    <Loader2 size={20} className="animate-spin" />
+                  ) : (
+                    <ArrowUp size={20} />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2 justify-center">
+              {suggestedQuestions.map((q) => (
+                <button
+                  key={q}
+                  onClick={() => handleSubmit(q)}
+                  disabled={loading}
+                  className="px-4 py-2.5 rounded-full border border-[#E4E2DC] bg-white text-[#1C1C1E] hover:border-[#1F5C45] hover:bg-[#EBF2EE] transition-colors cursor-pointer disabled:opacity-50"
+                  style={{ fontSize: "13px" }}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+
+            {error && (
+              <p className="text-[#C0392B] text-sm mt-4">{error}</p>
+            )}
+          </div>
+        ) : (
+          /* ─── Chat State: scrollable area + bottom input ─── */
+          <>
+            <div className="flex-1 overflow-y-auto" ref={scrollRef}>
+              <div className="space-y-6 pb-8">
+                {exchanges.map((exchange) => (
+                  <ExchangeBlock key={exchange.id} exchange={exchange} />
+                ))}
+                {loading && (
+                  <div className="flex items-center gap-3 text-[#6B6B78] pl-2">
+                    <Loader2 size={16} className="animate-spin" />
+                    <span style={{ fontSize: "14px" }}>
+                      Searching your library and composing an answer…
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Query Bar — Bottom */}
+            <div className="sticky bottom-0 z-10 bg-[#F7F5F0] pt-4 pb-4 md:pb-0">
+              {error && (
+                <p className="text-[#C0392B] text-sm mb-2">{error}</p>
+              )}
+              <div className="flex items-center gap-2 bg-white border border-[#E4E2DC] rounded-lg overflow-hidden">
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                  placeholder="Ask anything about your literature…"
+                  disabled={loading}
+                  className="flex-1 h-[56px] px-5 bg-transparent focus:outline-none disabled:opacity-50"
+                  style={{ fontSize: "15px" }}
+                />
+                <button
+                  onClick={() => handleSubmit()}
+                  disabled={!query.trim() || loading}
+                  className="w-[48px] h-[48px] mr-1 rounded-md bg-[#1F5C45] text-white flex items-center justify-center cursor-pointer hover:bg-[#174D39] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                >
+                  {loading ? (
+                    <Loader2 size={20} className="animate-spin" />
+                  ) : (
+                    <ArrowUp size={20} />
+                  )}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </AuthGate>
   );
