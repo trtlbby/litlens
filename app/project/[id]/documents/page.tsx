@@ -243,8 +243,8 @@ export default function DocumentsPage({
           /* Table */
           <div className="bg-white border border-[#E4E2DC] rounded-lg overflow-hidden">
             {/* Table header */}
-            <div className="hidden md:grid grid-cols-[48px_1fr_120px_80px_100px_88px] gap-2 px-5 py-3 border-b border-[#E4E2DC] bg-[#FAFAF8]">
-              {["#", "Document", "Authors", "Year", "Chunks", "Actions"].map(
+            <div className="hidden md:grid grid-cols-[48px_1fr_120px_80px_110px_100px_88px] gap-2 px-5 py-3 border-b border-[#E4E2DC] bg-[#FAFAF8]">
+              {["#", "Document", "Authors", "Year", "Relevance", "Chunks", "Actions"].map(
                 (h) => (
                   <span
                     key={h}
@@ -264,7 +264,7 @@ export default function DocumentsPage({
             {docs.map((doc, i) => (
               <div key={doc.id}>
                 <div
-                  className={`grid grid-cols-1 md:grid-cols-[48px_1fr_120px_80px_100px_88px] gap-2 px-5 py-3.5 items-center cursor-pointer transition-colors hover:bg-[#F0EDE6] ${i % 2 === 1 ? "bg-[#FAFAF8]" : "bg-white"
+                  className={`grid grid-cols-1 md:grid-cols-[48px_1fr_120px_80px_110px_100px_88px] gap-2 px-5 py-3.5 items-center cursor-pointer transition-colors hover:bg-[#F0EDE6] ${i % 2 === 1 ? "bg-[#FAFAF8]" : "bg-white"
                     }`}
                   onClick={() => toggleExpand(doc.id)}
                 >
@@ -287,23 +287,12 @@ export default function DocumentsPage({
                       />
                     )}
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="text-[#1C1C1E] truncate block"
-                          style={{ fontSize: "14px" }}
-                        >
-                          {doc.title || doc.filename}
-                        </span>
-                        {doc.tag && (
-                          <span className={`px-2 py-[2px] rounded-sm text-[10px] font-medium border ${doc.tag === "Highly Useful" ? "bg-[#EBF2EE] text-[#1F5C45] border-[#1F5C45]" :
-                              doc.tag === "Reviewing" ? "bg-[#FEF5ED] text-[#D4821A] border-[#D4821A]" :
-                                doc.tag === "Not Useful" ? "bg-[#FDF2F0] text-[#C0392B] border-[#C0392B]" :
-                                  "bg-[#E4E2DC] text-[#1C1C1E] border-[#6B6B78]"
-                            }`}>
-                            {doc.tag}
-                          </span>
-                        )}
-                      </div>
+                      <span
+                        className="text-[#1C1C1E] truncate block"
+                        style={{ fontSize: "14px" }}
+                      >
+                        {doc.title || doc.filename}
+                      </span>
                       {doc.title && doc.title !== doc.filename && (
                         <span
                           className="text-[#6B6B78] truncate block"
@@ -325,6 +314,9 @@ export default function DocumentsPage({
                     style={{ fontSize: "13px" }}
                   >
                     {doc.year || "—"}
+                  </span>
+                  <span className="hidden md:block">
+                    <RelevanceBadge tag={doc.tag} />
                   </span>
                   <span
                     className="text-[#6B6B78] hidden md:block"
@@ -446,5 +438,52 @@ export default function DocumentsPage({
         />
       </div>
     </AuthGate>
+  );
+}
+
+/* ─── Sub-components ─── */
+
+function RelevanceBadge({ tag }: { tag: string | null }) {
+  if (!tag) {
+    return (
+      <span
+        className="inline-flex items-center px-2 py-0.5 rounded-full"
+        style={{
+          fontSize: "11px",
+          fontWeight: 500,
+          backgroundColor: "#E4E2DC",
+          color: "#6B6B78",
+          border: "1px solid #D0CEC6",
+        }}
+      >
+        Untagged
+      </span>
+    );
+  }
+
+  let badgeColor: string;
+  if (tag === "Highly Useful") {
+    badgeColor = "#1F5C45";
+  } else if (tag === "Not Useful") {
+    badgeColor = "#C0392B";
+  } else if (tag === "Reviewing") {
+    badgeColor = "#D4821A";
+  } else {
+    badgeColor = "#6B6B78";
+  }
+
+  return (
+    <span
+      className="inline-flex items-center px-2 py-0.5 rounded-full"
+      style={{
+        fontSize: "11px",
+        fontWeight: 600,
+        backgroundColor: `${badgeColor}15`,
+        color: badgeColor,
+        border: `1px solid ${badgeColor}30`,
+      }}
+    >
+      {tag}
+    </span>
   );
 }

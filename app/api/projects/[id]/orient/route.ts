@@ -352,6 +352,42 @@ ${batchPrompts.join("\n\n")}`;
     // ─── Step 6: Library summary via Gemini ───
     // Library summary is now handled in the mega-prompt above!
 
+    // ─── Step 6.5: Auto-tag documents based on cluster relevance ───
+    if (project.researchQuestion) {
+      try {
+        // Build a map: docId → max relevance across all clusters it appears in
+        const docRelevanceMap = new Map<string, number>();
+        for (const cd of clusterData) {
+          // Get unique doc IDs in this cluster from the chunk groups
+          const clusterChunks = clusterGroups.get(cd.clusterIndex) || [];
+          const uniqueDocIds = [...new Set(clusterChunks.map((c) => c.docId))];
+          for (const docId of uniqueDocIds) {
+            const current = docRelevanceMap.get(docId) ?? 0;
+            docRelevanceMap.set(docId, Math.max(current, cd.relevance));
+          }
+        }
+
+        // Auto-tag each document based on its highest cluster relevance
+        for (const [docId, maxRelevance] of docRelevanceMap) {
+          let autoTag: string | null = null;
+          if (maxRelevance >= 7) {
+            autoTag = "Highly Useful";
+          } else if (maxRelevance <= 3) {
+            autoTag = "Not Useful";
+          }
+          // null = untagged (partially relevant, 4-6)
+
+          await prisma.document.update({
+            where: { id: docId },
+            data: { tag: autoTag },
+          });
+        }
+      } catch (error) {
+        console.error("Auto-tagging error:", error);
+        // Non-fatal: don't fail the pipeline if tagging fails
+      }
+    }
+
     // ─── Step 7: Update project with orientation data ───
     await prisma.project.update({
       where: { id: projectId },
