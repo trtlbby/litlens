@@ -137,6 +137,8 @@ export async function POST(
       chunks: { chunkId: string; distance: number }[];
       docCount: number;
       docNames: string[];
+      relevance: number;
+      relevanceReason: string;
     }[] = [];
 
     const batchPrompts: string[] = [];
@@ -162,6 +164,8 @@ export async function POST(
         chunks: chunks.map((c) => ({ chunkId: c.chunkId, distance: c.distance })),
         docCount: uniqueDocIds.length,
         docNames,
+        relevance: 0,
+        relevanceReason: "",
       });
 
       const sampleTexts = topChunks
@@ -175,13 +179,15 @@ export async function POST(
     let notableGapsArr: string[] = [];
 
     if (batchPrompts.length > 0) {
+      const hasRQ = !!project.researchQuestion;
       const megaPrompt = `You are an expert research assistant. I have grouped academic text snippets into ${batchPrompts.length} thematic clusters.
-${project.researchQuestion ? `\nThe user's specific Research Question is: "${project.researchQuestion}"\n` : ""}
-Please perform THREE tasks based on the provided clusters:
+${hasRQ ? `\nThe user's specific Research Question is: "${project.researchQuestion}"\n` : ""}
+Please perform ${hasRQ ? "FOUR" : "THREE"} tasks based on the provided clusters:
 
 1. CLUSTER LABELING: For EACH cluster, provide a short label (3-6 words) and a one-sentence summary.
 2. LIBRARY SUMMARY: Write a 2-3 sentence plain-English summary of what this entire library covers. Write in second person ("Your library...").
-3. GAP DETECTION: ${project.researchQuestion ? `Identify 2-3 missing or underrepresented topics relevant to the research question.` : `Identify 2-3 important missing topics.`} Provide ONLY short 1-to-3 word tags (e.g., "Cost-effectiveness", "Workforce Training"). Do not write full sentences.
+3. GAP DETECTION: ${hasRQ ? `Identify 2-3 missing or underrepresented topics relevant to the research question.` : `Identify 2-3 important missing topics.`} Provide ONLY short 1-to-3 word tags (e.g., "Cost-effectiveness", "Workforce Training"). Do not write full sentences.
+${hasRQ ? `4. CLUSTER RELEVANCE: For EACH cluster, rate its relevance to the research question on a scale of 0 to 10 (0 = completely irrelevant, 10 = directly answers the question). Then provide ONE sentence explaining HOW the cluster relates to the research question, or why it does NOT relate. Be strict: if the documents in the cluster have nothing to do with the research question, give a score of 0-2 and clearly state they are irrelevant.` : ""}
 
 Respond EXACTLY in this format:
 
@@ -189,10 +195,12 @@ Respond EXACTLY in this format:
 CLUSTER 0
 LABEL: [Label 0]
 SUMMARY: [Summary 0]
+${hasRQ ? "RELEVANCE: [0-10]\nRELEVANCE_REASON: [One sentence explaining how it relates or doesn't relate to the research question]" : ""}
 
 CLUSTER 1
 LABEL: [Label 1]
 SUMMARY: [Summary 1]
+${hasRQ ? "RELEVANCE: [0-10]\nRELEVANCE_REASON: [One sentence explaining how it relates or doesn't relate to the research question]" : ""}
 
 === LIBRARY SUMMARY ===
 [Your 2-3 sentence library summary...]
@@ -211,11 +219,19 @@ ${batchPrompts.join("\n\n")}`;
         
         // 1. Parse Clusters
         for (const cd of clusterData) {
-          const clusterRegex = new RegExp(`CLUSTER ${cd.clusterIndex}\\s*\\nLABEL:\\s*(.+?)\\s*\\nSUMMARY:\\s*(.+)`, "i");
+          const clusterRegex = new RegExp(
+            `CLUSTER ${cd.clusterIndex}\\s*\\nLABEL:\\s*(.+?)\\s*\\nSUMMARY:\\s*(.+?)` +
+            (hasRQ ? `\\s*\\nRELEVANCE:\\s*(\\d+)\\s*\\nRELEVANCE_REASON:\\s*(.+)` : ``),
+            "i"
+          );
           const match = llmResponse.match(clusterRegex);
           if (match) {
             cd.label = match[1].trim();
             cd.summary = match[2].trim();
+            if (hasRQ && match[3]) {
+              cd.relevance = Math.min(10, Math.max(0, parseInt(match[3], 10) || 0));
+              cd.relevanceReason = match[4]?.trim() || "";
+            }
           }
         }
 
@@ -246,14 +262,16 @@ ${batchPrompts.join("\n\n")}`;
 
       // Create cluster with raw SQL for vector column
       const clusterRows: { id: string }[] = await prisma.$queryRawUnsafe(
-        `INSERT INTO clusters (id, project_id, label, summary, centroid, cluster_index, created_at)
-         VALUES (gen_random_uuid(), $1::uuid, $2, $3, $4::vector, $5, NOW())
+        `INSERT INTO clusters (id, project_id, label, summary, centroid, cluster_index, relevance, relevance_reason, created_at)
+         VALUES (gen_random_uuid(), $1::uuid, $2, $3, $4::vector, $5, $6, $7, NOW())
          RETURNING id`,
         projectId,
         cd.label,
         cd.summary,
         centroidStr,
-        cd.clusterIndex
+        cd.clusterIndex,
+        cd.relevance || null,
+        cd.relevanceReason || null
       );
 
       const clusterId = clusterRows[0].id;
@@ -271,41 +289,63 @@ ${batchPrompts.join("\n\n")}`;
       }
     }
 
-    // ─── Step 5: Alignment scoring ───
+    // ─── Step 5: Alignment scoring (calibrated hybrid) ───
     let alignmentScore = 0;
     let strongCoverage: string[] = [];
+
+    // Cosine similarity baseline for unrelated academic texts in high-dim space.
+    // Anything at or below this = 0% alignment.
+    const COSINE_BASELINE = 0.45;
+    // Power curve exponent — compresses the neutral zone so only
+    // genuinely related content scores above 50.
+    const POWER_CURVE = 1.5;
 
     if (project.researchQuestion) {
       try {
         // Embed the research question
         const questionEmbedding = await embedText(project.researchQuestion);
 
-        // Compute cosine similarity against each cluster centroid
-        const similarities = clusterData.map((cd) => ({
-          label: cd.label,
-          similarity: cosineSimilarity(questionEmbedding, cd.centroid),
-          docCount: cd.docCount,
-        }));
+        // Compute calibrated cosine similarity against each cluster centroid
+        const similarities = clusterData.map((cd) => {
+          const rawSim = cosineSimilarity(questionEmbedding, cd.centroid);
+          // Calibrate: subtract baseline, clamp [0,1], apply power curve
+          const calibrated = Math.max(0, (rawSim - COSINE_BASELINE) / (1 - COSINE_BASELINE));
+          const curved = Math.pow(calibrated, POWER_CURVE);
+          return {
+            label: cd.label,
+            embeddingScore: curved,
+            llmRelevance: cd.relevance, // 0-10 from LLM
+            docCount: cd.docCount,
+          };
+        });
 
-        // Overall alignment = weighted average (by doc count)
+        // Compute embedding-based score (weighted average by doc count)
         const totalDocs = similarities.reduce((sum, s) => sum + s.docCount, 0);
-        const weightedScore =
-          similarities.reduce((sum, s) => sum + s.similarity * s.docCount, 0) / Math.max(totalDocs, 1);
+        const embeddingScore =
+          similarities.reduce((sum, s) => sum + s.embeddingScore * s.docCount, 0) / Math.max(totalDocs, 1);
+
+        // Compute LLM-based score (weighted average of 0-10 relevance, scaled to 0-1)
+        const llmScore =
+          similarities.reduce((sum, s) => sum + (s.llmRelevance / 10) * s.docCount, 0) / Math.max(totalDocs, 1);
+
+        // Hybrid: 60% LLM-judged, 40% embedding-based
+        const hybridScore = 0.6 * llmScore + 0.4 * embeddingScore;
 
         // Scale 0-1 → 0-100
-        alignmentScore = Math.round(weightedScore * 100);
+        alignmentScore = Math.round(hybridScore * 100);
         if (isNaN(alignmentScore)) alignmentScore = 0;
+        alignmentScore = Math.min(100, Math.max(0, alignmentScore));
 
-        // Strong coverage: clusters with similarity > 0.6
+        // Strong coverage: clusters with LLM relevance >= 7
         strongCoverage = similarities
-          .filter((s) => s.similarity > 0.6)
-          .sort((a, b) => b.similarity - a.similarity)
+          .filter((s) => s.llmRelevance >= 7)
+          .sort((a, b) => b.llmRelevance - a.llmRelevance)
           .map((s) => s.label);
 
         // Detected gaps are now handled in the mega-prompt!
       } catch (error) {
         console.error("Alignment scoring error:", error);
-        alignmentScore = 50; // default
+        alignmentScore = 0; // don't guess an optimistic score
       }
     }
 
@@ -335,6 +375,8 @@ ${batchPrompts.join("\n\n")}`;
         summary: cd.summary,
         doc_count: cd.docCount,
         doc_names: cd.docNames,
+        relevance: cd.relevance,
+        relevance_reason: cd.relevanceReason,
       })),
     });
   } catch (error) {
@@ -425,6 +467,8 @@ export async function GET(
         summary: c.summary,
         doc_count: docIds.size,
         doc_names: docNames,
+        relevance: c.relevance,
+        relevance_reason: c.relevanceReason,
       };
     });
 

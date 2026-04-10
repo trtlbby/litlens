@@ -82,8 +82,10 @@ model Cluster {
   label        String?
   summary      String?
   centroid     Unsupported("vector(3072)")?
-  clusterIndex Int      @map("cluster_index")
-  createdAt    DateTime @default(now()) @map("created_at")
+  clusterIndex    Int      @map("cluster_index")
+  relevance       Int?     // 0-10 relevance to research question
+  relevanceReason String?  @map("relevance_reason")
+  createdAt       DateTime @default(now()) @map("created_at")
 
   project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   chunkClusters ChunkCluster[]

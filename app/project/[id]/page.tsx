@@ -12,6 +12,8 @@ interface ClusterData {
   summary: string;
   doc_count: number;
   doc_names: string[];
+  relevance: number | null;
+  relevance_reason: string | null;
 }
 
 interface OrientationData {
@@ -210,7 +212,9 @@ export default function OrientationPage({
           What your library covers
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {data.clusters.map((cluster, i) => (
+          {[...data.clusters]
+            .sort((a, b) => (b.relevance ?? 0) - (a.relevance ?? 0))
+            .map((cluster, i) => (
             <ClusterCard
               key={cluster.id || i}
               cluster={cluster}
@@ -269,7 +273,7 @@ export default function OrientationPage({
 
 function AlignmentScore({ score }: { score: number }) {
   const color =
-    score >= 70 ? "#1F5C45" : score >= 40 ? "#D4821A" : "#C0392B";
+    score >= 50 ? "#1F5C45" : score >= 25 ? "#D4821A" : "#C0392B";
   const circumference = 2 * Math.PI * 52;
   const filled = (score / 100) * circumference;
 
@@ -329,23 +333,61 @@ function ClusterCard({
 }) {
   const [expanded, setExpanded] = useState(false);
 
+  const relevanceBadge = () => {
+    if (cluster.relevance == null) return null;
+    const r = cluster.relevance;
+    let badgeColor: string;
+    let badgeLabel: string;
+    if (r >= 7) {
+      badgeColor = "#1F5C45";
+      badgeLabel = "Highly Relevant";
+    } else if (r >= 4) {
+      badgeColor = "#D4821A";
+      badgeLabel = "Partially Relevant";
+    } else {
+      badgeColor = "#C0392B";
+      badgeLabel = "Not Relevant";
+    }
+    return (
+      <span
+        className="inline-flex items-center px-2 py-0.5 rounded-full"
+        style={{
+          fontSize: "11px",
+          fontWeight: 600,
+          backgroundColor: `${badgeColor}15`,
+          color: badgeColor,
+          border: `1px solid ${badgeColor}30`,
+        }}
+      >
+        {badgeLabel} ({r}/10)
+      </span>
+    );
+  };
+
   return (
-    <div className="bg-white border border-[#E4E2DC] rounded-lg overflow-hidden">
+    <div
+      className="bg-white border border-[#E4E2DC] rounded-lg overflow-hidden"
+      style={{
+        opacity: cluster.relevance != null && cluster.relevance < 4 ? 0.65 : 1,
+      }}
+    >
       <div className="flex">
         <div
           className="w-1 flex-shrink-0"
           style={{ backgroundColor: color }}
         />
         <div className="p-5 flex-1">
-          <h3
-            className="mb-1"
-            style={{
-              fontSize: "16px",
-              fontFamily: "var(--font-heading)",
-            }}
-          >
-            {cluster.label}
-          </h3>
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <h3
+              style={{
+                fontSize: "16px",
+                fontFamily: "var(--font-heading)",
+              }}
+            >
+              {cluster.label}
+            </h3>
+            {relevanceBadge()}
+          </div>
           <p className="text-[#6B6B78] mb-2" style={{ fontSize: "13px" }}>
             {cluster.doc_count} document{cluster.doc_count !== 1 ? "s" : ""}
           </p>
@@ -355,6 +397,17 @@ function ClusterCard({
           >
             {cluster.summary}
           </p>
+          {cluster.relevance_reason && (
+            <p
+              className="mt-2 text-[#1C1C1E] bg-[#F0EDE6] rounded px-3 py-2"
+              style={{ fontSize: "13px", lineHeight: 1.5 }}
+            >
+              <span style={{ fontWeight: 600, fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                Research alignment:{" "}
+              </span>
+              {cluster.relevance_reason}
+            </p>
+          )}
           {cluster.doc_names.length > 0 && (
             <>
               <button
