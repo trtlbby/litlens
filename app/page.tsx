@@ -43,6 +43,13 @@ export default function LandingPage() {
       <header className="w-full max-w-[1280px] px-5 md:px-10 py-5 flex items-center justify-between gap-3 md:gap-6 mx-auto">
         <LitLensLogo />
         <div className="flex items-center gap-3 md:gap-6">
+          <button
+            onClick={() => router.push("/about")}
+            className="text-black hover:opacity-60 transition-opacity bg-transparent border-none outline-none cursor-pointer px-2 py-1 hidden md:inline-block"
+            style={{ fontSize: "14px", fontFamily: "var(--font-body)" }}
+          >
+            About
+          </button>
           {isLoggedIn ? (
             <UserMenu />
           ) : (

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "./AuthContext";
-import { User, LogOut, Settings, FolderOpen } from "lucide-react";
+import { User, LogOut, Settings, FolderOpen, Info } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export function UserMenu() {
@@ -82,6 +82,17 @@ export function UserMenu() {
             >
               <Settings size={15} className="text-[#6B6B78]" />
               Preferences
+            </button>
+            <button
+              onClick={() => {
+                setOpen(false);
+                router.push("/about");
+              }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[#F7F5F0] transition-colors cursor-pointer outline-none"
+              style={{ fontSize: "13px", color: "#1C1C1E" }}
+            >
+              <Info size={15} className="text-[#6B6B78]" />
+              About LitLens
             </button>
           </div>
 
