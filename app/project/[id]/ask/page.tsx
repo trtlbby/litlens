@@ -118,7 +118,7 @@ export default function AskPage({
 
   return (
     <AuthGate featureName="Ask Your Library">
-      <div className="flex flex-col h-[calc(100vh-72px)]">
+      <div className="flex flex-col flex-1 min-h-0">
         {!historyLoaded ? (
           <div className="flex items-center justify-center flex-1">
             <div className="w-8 h-8 border-2 border-[#1F5C45] border-t-transparent rounded-full animate-spin" />
