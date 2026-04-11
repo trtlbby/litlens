@@ -32,17 +32,14 @@ export default function AboutPage() {
           <LitLensLogo />
         </div>
         <div className="flex items-center gap-3 md:gap-6">
-          {isLoggedIn ? (
-            <UserMenu />
-          ) : (
-            <button
-              onClick={() => router.push("/")}
-              className="text-black hover:opacity-60 transition-opacity bg-transparent border-none outline-none cursor-pointer px-2 py-1"
-              style={{ fontSize: "14px", fontFamily: "var(--font-body)" }}
-            >
-              Home
-            </button>
-          )}
+          <button
+            onClick={() => router.push("/")}
+            className="text-black hover:opacity-60 transition-opacity bg-transparent border-none outline-none cursor-pointer px-2 py-1"
+            style={{ fontSize: "14px", fontFamily: "var(--font-body)" }}
+          >
+            Home
+          </button>
+          {isLoggedIn && <UserMenu />}
           <button
             onClick={() => router.push("/new")}
             className="px-5 py-2.5 rounded-lg text-white transition-opacity hover:opacity-90 font-medium cursor-pointer text-sm"

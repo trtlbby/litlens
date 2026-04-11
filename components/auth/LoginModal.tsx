@@ -32,6 +32,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const [institution, setInstitution] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [postAuth, setPostAuth] = useState<"checking" | "no-projects" | null>(null);
 
@@ -46,6 +47,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
     setBio("");
     setInstitution("");
     setError("");
+    setSuccessMessage("");
     setShowPassword(false);
   };
 
@@ -106,6 +108,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
     }
     setLoading(true);
     setError("");
+    const savedEmail = email;
     const res = await register({
       firstName,
       lastName,
@@ -116,7 +119,17 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
     });
     setLoading(false);
     if (res.ok) {
-      await handlePostAuthRedirect();
+      // Switch to sign-in mode and pre-fill email so user can enter credentials
+      setMode("signin");
+      setPassword("");
+      setConfirmPassword("");
+      setFirstName("");
+      setLastName("");
+      setBio("");
+      setInstitution("");
+      setEmail(savedEmail);
+      setError("");
+      setSuccessMessage("Account created successfully! Please sign in with your credentials.");
     } else {
       setError(res.error || "Registration failed");
     }
@@ -214,7 +227,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
         </h2>
         <p className="text-center mb-6" style={{ fontSize: "14px", color: "#6B6B78" }}>
           {mode === "signin"
-            ? "Sign in to access your projects"
+            ? (successMessage ? "" : "Sign in to access your projects")
             : "Join LitLens to save your research"}
         </p>
 
@@ -246,6 +259,15 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
             Sign Up
           </button>
         </div>
+
+        {successMessage && (
+          <div
+            className="mb-5 px-4 py-3 rounded-lg text-sm"
+            style={{ backgroundColor: "#EBF2EE", color: "#1F5C45", border: "1px solid #c3dece" }}
+          >
+            {successMessage}
+          </div>
+        )}
 
         {mode === "signup" && (
           <div className="flex gap-3 mb-4">

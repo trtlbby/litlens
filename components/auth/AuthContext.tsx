@@ -22,7 +22,7 @@ interface AuthContextType {
   user: User | null;
   isLoggedIn: boolean;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  register: (data: { firstName: string; lastName: string; email: string; password: string; bio?: string; institution?: string }) => Promise<{ ok: boolean; error?: string }>;
+  register: (data: { firstName: string; lastName: string; email: string; password: string; bio?: string; institution?: string }) => Promise<{ ok: boolean; error?: string; registered?: boolean }>;
   logout: () => void;
   projects: Project[];
   activeProjectId: string | null;
@@ -115,7 +115,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     return { ok: true };
   }, []);
 
-  const register = useCallback(async (data: { firstName: string; lastName: string; email: string; password: string; bio?: string; institution?: string }) => {
+  const register = useCallback(async (data: { firstName: string; lastName: string; email: string; password: string; bio?: string; institution?: string }): Promise<{ ok: boolean; error?: string; registered?: boolean }> => {
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
@@ -126,10 +126,8 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
         const body = await res.json().catch(() => ({}));
         return { ok: false, error: body?.error?.message || "Registration failed" };
       }
-      // Auto-login after successful registration
-      const loginRes = await signIn("credentials", { email: data.email, password: data.password, redirect: false });
-      if (loginRes?.error) return { ok: false, error: "Account created but login failed. Please sign in manually." };
-      return { ok: true };
+      // Do NOT auto-login — user must sign in with their credentials
+      return { ok: true, registered: true };
     } catch {
       return { ok: false, error: "Registration failed" };
     }
